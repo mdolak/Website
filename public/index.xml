@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Portfolio</title>
+    <link>/</link>
+    <description>Recent content on Portfolio</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-US</language>
+    <lastBuildDate>Sat, 25 Apr 2020 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Building Magic Squares using Python</title>
+      <link>/blog/building-magic-squares-using-python/</link>
+      <pubDate>Tue, 12 May 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/blog/building-magic-squares-using-python/</guid>
+      <description>A magic square is a n x n square grid (where n is the number of cells on each side) filled with distinct positive integers in the range 1,2,…,n^2 such that each cell contains a different integer and the sum of the integers in each row, column and diagonal is equal.
+ library(reticulate)  class MagicSquare: # Create an object with the MagicSquare side size as an input. # It&amp;#39;s properties are the sideLength and a grid - two-dimensional list # representing the content of the MagicSquare.</description>
+    </item>
+    
+    <item>
+      <title>Prediction of legal and illegal drugs intake based on personality traits.</title>
+      <link>/project2/</link>
+      <pubDate>Sat, 25 Apr 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/project2/</guid>
+      <description>For my analysis, I used a personality traits and drug intake dataset. It was collected between March 2011 and March 2012 by Elaine Fehrman through an online questionnaire, it contains records of 1885 respondents. Each response includes personality trait scores measured by NEO-FFI-R (neuroticism, extraversion, openness to experience, agreeableness, and conscientiousness) - known as the Big Five and denoted as O C E A N variables; impulsivity score measured by BIS-11; sensation seeking score measured by ImpSS; level of education; age; gender; country of residence; ethnicity.</description>
+    </item>
+    
+    <item>
+      <title>RTrack Analysis</title>
+      <link>/project1/</link>
+      <pubDate>Mon, 16 Mar 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/project1/</guid>
+      <description>The data for this project was originally collected in my Principal Investigator’s - Dr. Michael Drew’s - lab at The University of Texas at Austin and published in the paper (Meshi et al., 2006). It investigates effects of an environmental enrichment (hosuing in a cage with toys versus normal housing) and inhibition of hippocampal neurogenesis (treatment with X-rays versus Sham - control) on learning. There were two cohorts of mice, each consisting of 32 mice.</description>
+    </item>
+    
+    <item>
+      <title>Game</title>
+      <link>/project3/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/project3/</guid>
+      <description>library(reticulate)  # File: Project2.py # Description: This program uses object-oriented techniques to create # a simple map for an adventure game, similar to &amp;quot;Colossal Cave&amp;quot;, with rooms # given in a txt file. It uses command-line interpreter as an interactive # user interface. # Student&amp;#39;s Name: Maria Dolak # Course Name: CS 303E # # Date Created: 05/05/2020 # Date Last Modified: 07/05/2020 # Create a class Room. class Room: # Define an object with the following attributes: name, rooms to the # north, east, south west, up and down and the contents of the room.</description>
+    </item>
+    
+    <item>
+      <title>papers</title>
+      <link>/papers/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/papers/</guid>
+      <description> 2020:
+ 3-dimensional reconstructions of neuropil in hippocampus of aged-impaired and young rats  2018:
+ How can defects in primary cilia cause birth defects?  2017:
+ The Nobel Prize in Physiology or Medicine 1981 - D.H Hubel and T.N Wiesel “for their discoveries concerning information processing in the visual system”  </description>
+    </item>
+    
+    <item>
+      <title>Projects</title>
+      <link>/projects/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/projects/</guid>
+      <description>Projects:
+ Analysis of MWM (Morris Water Maze) data prepared using RTrack package Drugs intake based on personality traits Simple adventure game, it requires this file saved in the same directory. Download both files to your computer and run using python 3.  </description>
+    </item>
+    
+  </channel>
+</rss>

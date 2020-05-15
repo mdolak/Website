@@ -1,0 +1,21 @@
+{{ partial "head" . }}
+  <body>
+    <div id="wrap">
+      {{ partial "header" . }}
+      <section id="about">
+        <div class="container">
+        <div class="avatar">
+          <img class="img-circle" src="{{ .Site.BaseURL }}img/{{ .Site.Params.avatar }}" alt="It me." height=200px width=200px>
+        </div>
+        <h3>I'm <strong>{{ .Site.Params.author }}</strong>, a Neuroscience student.</h3>
+        <h3>My field-related interests are neurbiology of behavior, memory and mental disorders. I'm also learning data analysis applied in biomedical science.</h3>
+        <h3>Have a look at my recent <a href="{{ .Site.BaseURL }}projects/"> projects</a>.</h3>
+        <h3>For more check out my academic <a href="/resume.pdf" target="_blank">resume</a>.</h3>
+        <h3>You can contact me through the email <a href="s1737523@ed.ac.uk" target="_blank">s1737523@ed.ac.uk</h3>
+        {{ partial "social.html" . }}
+        </div>
+      </section>
+    </div>
+    {{ partial "footer" . }}
+  </body>
+</html>

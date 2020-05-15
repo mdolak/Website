@@ -1,0 +1,724 @@
+---
+title: "Prediction of legal and illegal drugs intake based on personality traits."
+author: "Maria Dolak mkd2287"
+date: "2020-04-25"
+output: pdf_document
+---
+
+
+
+<p><strong>For my analysis, I used a personality traits and drug intake dataset. It was collected between March 2011 and March 2012 by Elaine Fehrman through an online questionnaire, it contains records of 1885 respondents. Each response includes personality trait scores measured by NEO-FFI-R (neuroticism, extraversion, openness to experience, agreeableness, and conscientiousness) - known as the Big Five and denoted as O C E A N variables; impulsivity score measured by BIS-11; sensation seeking score measured by ImpSS; level of education; age; gender; country of residence; ethnicity. In addition, participants were questioned concerning their use of 18 legal and illegal drugs - alcohol, amphetamines, amyl nitrite, benzodiazepine, cannabis, chocolate, cocaine, caffeine, crack, ecstasy, heroin, ketamine, legal highs, LSD, methadone, mushrooms, nicotine and volatile substance abuse and one fictitious drug (Semeron) which was introduced to identify over-claimers. The response categories were as follows: never used the drug, used it over a decade ago, or in the last decade, year, month, week, or day. Only a relevant subset of the data was used for each of the Project 2 questions.</strong></p>
+<p><strong>The data was donated by authors. In depth data analysis was published in an extended report - Fehrman E., Muhammad A.K., Mirkes E.M., Egan V., Gorban A.N. (2017) The Five Factor Model of Personality and Evaluation of Drug Consumption Risk. In: Palumbo F., Montanari A., Vichi M. (eds) Data Science. Studies in Classification, Data Analysis, and Knowledge Organization. Springer, Cham.</strong></p>
+<p><em>Function to calculate Accuracy, Sensitivity (TPR), Specificity (TNR), Recall (PPV) and Area under the curve (AUC).</em></p>
+<div id="read-in-the-data" class="section level1">
+<h1>Read in the data</h1>
+<pre class="r"><code>library(readr)
+drugs &lt;- read_csv(&quot;drug_consumption_data.csv&quot;)
+library(dplyr)
+library(tidyverse)
+library(lmtest)</code></pre>
+<p><em>Cleaning up the data: Recoding the values given in the dataset according to the legend given <a href="https://data.world/uci/drug-consumption-quantified" class="uri">https://data.world/uci/drug-consumption-quantified</a> Recategorizing education into three groups. Centering Big Five personality test scores around the mean. Dummy coding - reclassifying categories of drug intake.</em></p>
+<pre class="r"><code>drugs &lt;- drugs %&gt;% mutate(gender = case_when(gender == 0.48246 ~ &quot;Female&quot; ,
+gender == (-0.48246) ~&quot;Male&quot;))
+
+drugs &lt;- drugs %&gt;% mutate(education = case_when(education == -2.43591  ~ &quot;Left_before_16&quot; ,
+education == -1.73790  ~ &quot;Left_16&quot;,education == -1.43719  ~ &quot;Left_17&quot;,
+education == -1.22751  ~ &quot;Left_18&quot;,education == -0.61113  ~ &quot;Uni_no_degree&quot;,
+education == -0.05921  ~ &quot;Diploma&quot;,education == 0.45468   ~ &quot;Undergraduate&quot;,
+education == 1.16365  ~ &quot;Masters&quot;,education == 1.98437  ~ &quot;PhD&quot;))
+
+drugs &lt;- drugs %&gt;% mutate(country = case_when(country == -0.09765  ~ &quot;Australia&quot;, 
+country == 0.24923  ~ &quot;Canada&quot;, country == -0.46841  ~ &quot;New Zealand&quot;,
+country == -0.28519  ~ &quot;Other&quot;,country == 0.21128  ~ &quot;Ireland&quot;,
+country == 0.96082  ~ &quot;UK&quot;,country == -0.57009   ~ &quot;USA&quot;))
+
+drugs &lt;- drugs %&gt;% mutate(ethnicity = case_when(ethnicity == -0.50212  ~ &quot;Asian&quot;,
+ethnicity == -1.10702   ~ &quot;Black&quot;, ethnicity == 1.90725  ~ &quot;Black/Asian&quot;, 
+ethnicity == 0.12600  ~ &quot;White/Asian&quot;, ethnicity == -0.22166  ~ &quot;White/Black&quot;, 
+ethnicity == 0.11440  ~ &quot;Other&quot;, ethnicity == -0.31685  ~ &quot;White&quot;))
+
+drugs &lt;- drugs %&gt;% mutate(age = case_when(age == -0.95197  ~ &quot;18-24&quot;, 
+age == -0.07854   ~ &quot;25-34&quot;, age == 0.49788  ~ &quot;35-44&quot;, age == 1.09449  ~ &quot;45-54&quot;,
+age == 1.82213  ~ &quot;55-64&quot;, age == 2.59171  ~ &quot;65+&quot;))
+
+# New education categories:
+# High: PhD, Masters, Undergraduate
+# Middle: Diploma/Certificate, University with no degree
+# Low: All groups that left school before or at age 18
+
+drugs &lt;- drugs %&gt;% mutate(edu = case_when(education == &quot;Undergraduate&quot;  ~ &quot;High&quot;,
+education == &quot;Diploma&quot;  ~ &quot;Middle&quot;, education == &quot;PhD&quot;  ~ &quot;High&quot;, 
+education == &quot;Masters&quot;  ~ &quot;High&quot;, education == &quot;Left_before_16&quot;  ~ &quot;Low&quot;,
+education == &quot;Left_16&quot;  ~ &quot;Low&quot;, education == &quot;Left_17&quot;  ~ &quot;Low&quot;, 
+education == &quot;Left_18&quot;  ~ &quot;Low&quot;, education == &quot;Uni_no_degree&quot;  ~ &quot;Middle&quot;))
+
+# Center Big Five personality traits around mean
+
+drugs$oo &lt;- drugs$o - mean(drugs$o)
+drugs$cc &lt;- drugs$c - mean(drugs$c)
+drugs$ee &lt;- drugs$e - mean(drugs$e)
+drugs$aa &lt;- drugs$a - mean(drugs$a)
+drugs$nn &lt;- drugs$n - mean(drugs$n)
+
+# More frequently used drugs
+# Regular users vs sporadic/non-users
+# Sporadic/non-users (0): Group that has never tried or tried a decade ago.
+# Regular users (1) tried within last year/month/week/day. 
+# NOTE: the answers do not actually indicate a frequency of 
+# usage but when was the last time someone took a particular drug, 
+# e.g. the group of people who drunk alocohol within last day does not indicate a frequent use of the drug.
+
+drugs &lt;- drugs%&gt;%mutate(Nicotine=ifelse(Nicotine==&quot;CL5&quot; | Nicotine==&quot;CL6&quot;,1,0))%&gt;%
+mutate(Alcohol=ifelse(Alcohol==&quot;CL5&quot; | Alcohol==&quot;CL6&quot;,1,0)) %&gt;% 
+mutate(Caffeine=ifelse(Caffeine==&quot;CL5&quot; | Caffeine==&quot;CL6&quot;,1,0)) %&gt;%
+mutate(Cannabis=ifelse(Cannabis==&quot;CL5&quot; | Cannabis==&quot;CL6&quot;,1,0)) %&gt;% 
+mutate(Chocolate=ifelse(Chocolate==&quot;CL5&quot; | Chocolate==&quot;CL6&quot;,1,0))
+
+# Less frequently used drugs
+# Tried at least once (0) vs never tried (1)
+drugs &lt;- drugs%&gt;%mutate(Cocaine=ifelse(Cocaine==&quot;CL0&quot;,0,1)) %&gt;% mutate(Amphet=ifelse(Amphet==&quot;CL0&quot;,0,1))%&gt;%
+mutate(Amyl=ifelse(Amyl==&quot;CL0&quot;,0,1))%&gt;%
+mutate(Benzos=ifelse(Benzos==&quot;CL0&quot;,0,1))%&gt;%
+mutate(Crack=ifelse(Crack==&quot;CL0&quot;,0,1))%&gt;%
+mutate(Ectasy=ifelse(Ectasy==&quot;CL0&quot;,0,1))%&gt;%
+mutate(Heroin=ifelse(Heroin==&quot;CL0&quot;,0,1))%&gt;%
+mutate(Ketamine=ifelse(Ketamine==&quot;CL0&quot;,0,1))%&gt;%
+mutate(LehalH=ifelse(LehalH==&quot;CL0&quot;,0,1))%&gt;%
+mutate(LSD=ifelse(LSD==&quot;CL0&quot;,0,1))%&gt;%
+mutate(Meth=ifelse(Meth==&quot;CL0&quot;,0,1))%&gt;%
+mutate(Mushrooms=ifelse(Mushrooms==&quot;CL0&quot;,0,1))
+
+
+head(drugs)</code></pre>
+<pre><code>## # A tibble: 6 x 38
+##      ID age   gender education country ethnicity     n     e     o     a     c
+##   &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;  &lt;chr&gt;     &lt;chr&gt;   &lt;chr&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1     1 25-34 Male   PhD       UK      White        29    52    55    48    41
+## 2     2 35-44 Male   Diploma   UK      White        31    45    40    32    34
+## 3     3 18-24 Female Masters   UK      White        34    34    46    47    46
+## 4     4 35-44 Female PhD       UK      White        43    28    43    41    50
+## 5     5 65+   Female Left_18   Canada  White        29    38    35    55    52
+## 6     6 45-54 Male   Masters   USA     White        31    32    43    41    48
+## # … with 27 more variables: impulsive &lt;dbl&gt;, ss &lt;dbl&gt;, Alcohol &lt;dbl&gt;,
+## #   Amphet &lt;dbl&gt;, Amyl &lt;dbl&gt;, Benzos &lt;dbl&gt;, Caffeine &lt;dbl&gt;, Cannabis &lt;dbl&gt;,
+## #   Chocolate &lt;dbl&gt;, Cocaine &lt;dbl&gt;, Crack &lt;dbl&gt;, Ectasy &lt;dbl&gt;, Heroin &lt;dbl&gt;,
+## #   Ketamine &lt;dbl&gt;, LehalH &lt;dbl&gt;, LSD &lt;dbl&gt;, Meth &lt;dbl&gt;, Mushrooms &lt;dbl&gt;,
+## #   Nicotine &lt;dbl&gt;, Semer &lt;chr&gt;, VSA &lt;chr&gt;, edu &lt;chr&gt;, oo &lt;dbl&gt;, cc &lt;dbl&gt;,
+## #   ee &lt;dbl&gt;, aa &lt;dbl&gt;, nn &lt;dbl&gt;</code></pre>
+<p><strong>Manova for differences in big five traits between different education levels.</strong></p>
+<p><em>All 5 traits showed a significant differences between different education levels. After Bonferroni correction: Openess - people with higher or middle education show significantly higher openess than people with low education, no difference between high and middle. Conscientiousness - people with higher education show significantly higher score than people with either middle or low education, no difference between middle and low. Extraversion - people with higher education show higher score than people with middle or low education, no difference between middle and low. Agreeableness - people with higher education show higher score than people with middle education, no other significant differences. Neuroticism - people with middle education show significantly higher score than people with higher education, no other differences.</em></p>
+<p><em>IMPORTANT: The differences do not explain the causality, whether personality traits predict how far people reach with their education vs. education helps to develop certain personality traits. Note also that significant doesn’t mean huge, the differences are usually of about just one score as can be seen in the table with means for each group. In addition, manova assumptions were likely violated, e.g. Shapiro-Wilk test rejected multivariate normality, ggboxplot shows a big variance within each personality traits group and possibly violation of homogeneity of within-group covariance.</em></p>
+<pre class="r"><code># Q1
+
+m&lt;-manova(cbind(o,c,e,a,n) ~ edu, data = drugs)
+summary(m)</code></pre>
+<pre><code>##             Df   Pillai approx F num Df den Df    Pr(&gt;F)    
+## edu          2 0.080661   15.785     10   3756 &lt; 2.2e-16 ***
+## Residuals 1881                                              
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>summary.aov(m) </code></pre>
+<pre><code>##  Response o :
+##               Df Sum Sq Mean Sq F value    Pr(&gt;F)    
+## edu            2   1734  866.76  20.427 1.673e-09 ***
+## Residuals   1881  79814   42.43                      
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+##  Response c :
+##               Df Sum Sq Mean Sq F value    Pr(&gt;F)    
+## edu            2   5270 2634.84  57.517 &lt; 2.2e-16 ***
+## Residuals   1881  86168   45.81                      
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+##  Response e :
+##               Df Sum Sq Mean Sq F value    Pr(&gt;F)    
+## edu            2   1007  503.50  11.088 1.633e-05 ***
+## Residuals   1881  85419   45.41                      
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+##  Response a :
+##               Df Sum Sq Mean Sq F value   Pr(&gt;F)   
+## edu            2    527 263.302  6.3882 0.001718 **
+## Residuals   1881  77529  41.217                    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+##  Response n :
+##               Df Sum Sq Mean Sq F value    Pr(&gt;F)    
+## edu            2   1196  597.85  7.2067 0.0007622 ***
+## Residuals   1881 156041   82.96                      
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>pairwise.t.test(drugs$o,drugs$edu, p.adj=&quot;none&quot;)</code></pre>
+<pre><code>## 
+##  Pairwise comparisons using t tests with pooled SD 
+## 
+## data:  drugs$o and drugs$edu 
+## 
+##        High    Low    
+## Low    1.1e-07 -      
+## Middle 0.12    2.8e-10
+## 
+## P value adjustment method: none</code></pre>
+<pre class="r"><code>pairwise.t.test(drugs$c,drugs$edu, p.adj=&quot;none&quot;)</code></pre>
+<pre><code>## 
+##  Pairwise comparisons using t tests with pooled SD 
+## 
+## data:  drugs$c and drugs$edu 
+## 
+##        High    Low 
+## Low    4.6e-11 -   
+## Middle &lt; 2e-16 0.65
+## 
+## P value adjustment method: none</code></pre>
+<pre class="r"><code>pairwise.t.test(drugs$e,drugs$edu, p.adj=&quot;none&quot;)</code></pre>
+<pre><code>## 
+##  Pairwise comparisons using t tests with pooled SD 
+## 
+## data:  drugs$e and drugs$edu 
+## 
+##        High    Low    
+## Low    3.6e-05 -      
+## Middle 0.00049 0.09155
+## 
+## P value adjustment method: none</code></pre>
+<pre class="r"><code>pairwise.t.test(drugs$a,drugs$edu, p.adj=&quot;none&quot;)</code></pre>
+<pre><code>## 
+##  Pairwise comparisons using t tests with pooled SD 
+## 
+## data:  drugs$a and drugs$edu 
+## 
+##        High   Low   
+## Low    0.0069 -     
+## Middle 0.0019 0.5955
+## 
+## P value adjustment method: none</code></pre>
+<pre class="r"><code>pairwise.t.test(drugs$n,drugs$edu, p.adj=&quot;none&quot;)</code></pre>
+<pre><code>## 
+##  Pairwise comparisons using t tests with pooled SD 
+## 
+## data:  drugs$n and drugs$edu 
+## 
+##        High    Low    
+## Low    0.01084 -      
+## Middle 0.00048 0.91415
+## 
+## P value adjustment method: none</code></pre>
+<pre class="r"><code>drugs %&gt;% group_by(edu) %&gt;% select(o,c,e,a,n) %&gt;% summarize_all(mean)</code></pre>
+<pre><code>## # A tibble: 3 x 6
+##   edu        o     c     e     a     n
+##   &lt;chr&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1 High    45.9  43.3  40.3  43.4  35.0
+## 2 Low     43.4  40.1  38.3  42.2  36.7
+## 3 Middle  46.4  39.9  39.2  42.5  36.6</code></pre>
+<pre class="r"><code># Number of tests: 21
+1 + 5 + 5*3</code></pre>
+<pre><code>## [1] 21</code></pre>
+<pre class="r"><code># Probability of at least type I error: 65.9%
+1-0.95^21</code></pre>
+<pre><code>## [1] 0.6594384</code></pre>
+<pre class="r"><code># Bonferroni correction 0.0024
+0.05/21</code></pre>
+<pre><code>## [1] 0.002380952</code></pre>
+<pre class="r"><code>library(ggpubr)
+library(rstatix)
+
+
+ggboxplot(drugs, x = &quot;edu&quot;, y = c(&quot;o&quot;,&quot;c&quot;,&quot;e&quot;,&quot;a&quot;,&quot;n&quot;), merge = TRUE, palette = &quot;jco&quot;)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-3-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>drugs %&gt;% select(o,c,e,a,n) %&gt;% mshapiro_test()</code></pre>
+<pre><code>## # A tibble: 1 x 2
+##   statistic   p.value
+##       &lt;dbl&gt;     &lt;dbl&gt;
+## 1     0.996 0.0000480</code></pre>
+<p><strong>Randomization &gt;&gt;&gt; PERMANOVA</strong></p>
+<p><em>To avoid a violation of assumptions, PERMANOVA on the same data was performed. The null hypothesis is that there is no difference in personality traits between different education levels. The alternative hypothesis is that there are differences in personality traits depending on the level of education: high, middle or low. The null hypothesis can be rejected as indicated by the low p value and the F value (18.874) being that is . As can be seen on the graph with F value distribution, there is a significant difference in personality traits between different education levels.</em></p>
+<pre class="r"><code># Q2
+
+library(vegan)
+distances &lt;- drugs %&gt;% select(o,c,e,a,n) %&gt;% dist()
+ado &lt;- adonis(distances~edu,data = drugs)
+ado</code></pre>
+<pre><code>## 
+## Call:
+## adonis(formula = distances ~ edu, data = drugs) 
+## 
+## Permutation: free
+## Number of permutations: 999
+## 
+## Terms added sequentially (first to last)
+## 
+##             Df SumsOfSqs MeanSqs F.Model      R2 Pr(&gt;F)    
+## edu          2      9732  4866.2  18.874 0.01967  0.001 ***
+## Residuals 1881    484971   257.8         0.98033           
+## Total     1883    494703                 1.00000           
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>qplot(ado$f.perms) + labs(y = &quot;Count&quot;, x = &quot;F value&quot;)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-4-1.png" width="768" style="display: block; margin: auto;" /></p>
+<p><strong>A linear regression model predicting sensation seeking from the Big Five personality traits.</strong></p>
+<p><em>When other personality traits are kept at 0, increase by one unit in Openess, Extraversion and Neuroticism causes increase in Sensation Seeking by 0.05, 0.03 and 0.001 respectively (when calculated using z-scores rather than actual scores centered around mean, the values were 0.36, 0.22 and 0.07 respectively). Increase in Conscientiousness and Agreeableness causes decrease in Sensation Seeking by 0.03 in both (0.21 and 0.20 respectively using z-scores). The interaction indicates that for every increase by one in Openess, the slope of linear relationship between Sensation Seeking and Agreeableness increases by 0.001 (0.05 using z-score) and for every increase in Openess, the slope for linear relationship between SS and Neuroticism increases by 0.0009 (no increase using z-score).</em></p>
+<pre class="r"><code># Q3a
+fit&lt;-lm(ss ~ (oo + cc + ee + aa + nn)^2 , data=drugs)
+summary(fit)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = ss ~ (oo + cc + ee + aa + nn)^2, data = drugs)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -2.41225 -0.51808 -0.02254  0.53665  2.41882 
+## 
+## Coefficients:
+##               Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)  3.770e-03  2.147e-02   0.176   0.8606    
+## oo           5.123e-02  2.986e-03  17.158   &lt;2e-16 ***
+## cc          -3.087e-02  3.112e-03  -9.917   &lt;2e-16 ***
+## ee           3.474e-02  3.287e-03  10.569   &lt;2e-16 ***
+## aa          -2.922e-02  3.041e-03  -9.609   &lt;2e-16 ***
+## nn           6.178e-03  2.424e-03   2.548   0.0109 *  
+## oo:cc        9.016e-04  4.479e-04   2.013   0.0443 *  
+## oo:ee       -1.301e-04  4.289e-04  -0.303   0.7617    
+## oo:aa        1.146e-03  4.562e-04   2.513   0.0120 *  
+## oo:nn        1.073e-04  3.622e-04   0.296   0.7671    
+## cc:ee       -7.829e-04  4.701e-04  -1.665   0.0960 .  
+## cc:aa        3.721e-04  4.571e-04   0.814   0.4157    
+## cc:nn        7.282e-05  3.394e-04   0.215   0.8301    
+## ee:aa       -5.479e-05  4.971e-04  -0.110   0.9122    
+## ee:nn       -2.822e-04  3.450e-04  -0.818   0.4135    
+## aa:nn        1.579e-04  3.538e-04   0.446   0.6554    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.808 on 1868 degrees of freedom
+## Multiple R-squared:  0.3024, Adjusted R-squared:  0.2968 
+## F-statistic: 53.98 on 15 and 1868 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code># I tried to visualize relationship between oo and aa on ss but the graphs 
+# showed an almost parallel to x-axis line showing that the interaction is almost none. 
+# I was not sure if my graphs were correct so I skipped them.</code></pre>
+<p><strong>Predicting sensation seeking from impulsivity and gender</strong></p>
+<p><em>Being a female decreases sensation seeking by 0.14, while being a male increases sensation seeking by 0.28. For every increase in impulsivity by one unit, there is an increase in sensation seeking by 0.64. However, an increase in impulsivity by one unit if you are a male causes a decrease in sensation seeking by 0.09 (less statistically significant than the other results). A steeper red line on the graph suggests that impulsivity score explains the sensation seeking score to a greater extent for females than for males. The “grid structure” of the data points is due to a limited range of scores for both ss and impulsivity. Both scores are z-scores.</em></p>
+<pre class="r"><code># Q3b
+
+fit2&lt;-lm(ss ~ impulsive * gender, data=drugs)
+summary(fit2) </code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = ss ~ impulsive * gender, data = drugs)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -2.50714 -0.51967  0.04327  0.51908  2.55450 
+## 
+## Coefficients:
+##                      Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)          -0.13937    0.02444  -5.703 1.36e-08 ***
+## impulsive             0.64467    0.02481  25.986  &lt; 2e-16 ***
+## genderMale            0.27798    0.03462   8.029 1.71e-15 ***
+## impulsive:genderMale -0.08563    0.03635  -2.356   0.0186 *  
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.7406 on 1880 degrees of freedom
+## Multiple R-squared:  0.4102, Adjusted R-squared:  0.4092 
+## F-statistic: 435.8 on 3 and 1880 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>drugs %&gt;% ggplot(aes(impulsive, ss, color = gender)) + geom_point() +
+  geom_smooth(method = &quot;lm&quot;)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-6-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># My question: would the impulsive:genderMale interaction suggest 
+# that impulsivity may explain the positive effect of male on sensation
+# seeking score meaning the gender itself is not such a strong predictor?</code></pre>
+<p><strong>Checking assumptions</strong></p>
+<p><em>Non-significant p-value for bptest confirms that homoskedasticity is maintained. The graphs show that linearity and normality are maintained. However, the Kolmogorov-Smirnov and Shapiro-Wilk tests of normality reject the null hypothesis hence rejecting the normality assumption. This, potentially, could be due to a large data sample as these tests are better in checking assumptions for smaller datasets.</em></p>
+<pre class="r"><code># Q3c
+
+resids&lt;-fit2$residuals 
+fitvals&lt;-fit2$fitted.values
+
+
+# normality
+ggplot()+geom_histogram(aes(resids),bins=20)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-7-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ggplot()+geom_qq(aes(sample=resids))+geom_qq_line(aes(sample=resids), color=&#39;red&#39;)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-7-2.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>ks.test(resids, &quot;pnorm&quot;, sd=sd(resids))</code></pre>
+<pre><code>## 
+##  One-sample Kolmogorov-Smirnov test
+## 
+## data:  resids
+## D = 0.044948, p-value = 0.0009885
+## alternative hypothesis: two-sided</code></pre>
+<pre class="r"><code>shapiro.test(resids)</code></pre>
+<pre><code>## 
+##  Shapiro-Wilk normality test
+## 
+## data:  resids
+## W = 0.99708, p-value = 0.001288</code></pre>
+<pre class="r"><code># linearity and homoskedasticity
+library(sandwich)
+ggplot()+geom_point(aes(fitvals,resids))+geom_hline(yintercept=0, col=&quot;red&quot;)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-7-3.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>bptest(fit2)</code></pre>
+<pre><code>## 
+##  studentized Breusch-Pagan test
+## 
+## data:  fit2
+## BP = 6.6518, df = 3, p-value = 0.08387</code></pre>
+<p><em>Both, standard errors (SE) and robust SE are very similar for this model with differences of the 0.001 order. This is in line with the results of bptest showing that homoskedasticity is maintained, so the hypothetically more conservative standard error is almost the same.</em></p>
+<pre class="r"><code># Q3d
+summary(fit2)$coef</code></pre>
+<pre><code>##                         Estimate Std. Error   t value      Pr(&gt;|t|)
+## (Intercept)          -0.13937475 0.02443886 -5.702998  1.364325e-08
+## impulsive             0.64466879 0.02480827 25.986044 1.863026e-127
+## genderMale            0.27797508 0.03462117  8.029050  1.714638e-15
+## impulsive:genderMale -0.08563257 0.03635364 -2.355544  1.859784e-02</code></pre>
+<pre class="r"><code>coeftest(fit2, vcov = vcovHC(fit2))</code></pre>
+<pre><code>## 
+## t test of coefficients:
+## 
+##                       Estimate Std. Error t value  Pr(&gt;|t|)    
+## (Intercept)          -0.139375   0.025423 -5.4821 4.769e-08 ***
+## impulsive             0.644669   0.026025 24.7716 &lt; 2.2e-16 ***
+## genderMale            0.277975   0.035034  7.9344 3.599e-15 ***
+## impulsive:genderMale -0.085633   0.037106 -2.3078   0.02112 *  
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code># This model explains 41% of the variation in the model of sensation seeking
+# from impulsivity and gender.
+
+summary(fit2)$r.sq</code></pre>
+<pre><code>## [1] 0.4101561</code></pre>
+<p><em>Bootstrapped standard errors calculated from 5000 data samples with replacement, again, show very similar values differing by the order of 0.001 from normal SE and robust SE. This show that a model performs similarly in even more conservative SE models. This is because the model assumptions were met and the sample is large.</em></p>
+<pre class="r"><code># repeat 5000 times
+samp_distn&lt;-replicate(5000, {
+  boot_dat &lt;- sample_frac(drugs, replace=T) #bootstrap your data
+  fit &lt;- lm(ss ~ impulsive * gender, data=boot_dat) #fit model
+  coef(fit) #save coefs
+})
+## Estimated SEs
+samp_distn %&gt;% t %&gt;% as.data.frame %&gt;% summarize_all(sd)</code></pre>
+<pre><code>##   (Intercept)  impulsive genderMale impulsive:genderMale
+## 1  0.02529048 0.02626461 0.03455965           0.03767077</code></pre>
+<p><strong>FINALLY! Predicting drug-intake-related behavior from the Big Five personality traits, impulsivity and sensation seeking.</strong></p>
+<p><em>Based on the paper published with this dataset, there are three clusters of drugs that are centered around heroin (crack, cocaine, methadone), ectasy (amphetamines, cannabis, cocaine, ketamine, LSD, magic mushrooms, legal highs) or benzodiazepines (methadone, amphetamines, cocaine). Roughly speaking, this means, someone who tried one drug from a given class, was likely to try others. However, the interactions between and within these classes are much more complex, e.g. knowing the consumption patterns of LSD, Magic Mushrooms and Cocaine can predict Ketamine intake but not the other way round. For simplicity, I used the three clusters without further interactions. Therefore, I created variable that grouped respondents who tried at least one of the drug from each group (the groups where respondent tried all of the drugs from the given class were small, ~7% of the total sample, and the sensitivity of the model was 0, so it was excluded from the analysis.)</em></p>
+<p><em>The rest of the analysis presents logistic regression models predicting intake of at least one drug from a given drug class, using the Big Five personality traits, impulsivity and sensation seeking as predicting variables. The models’ out-of sample predictions using 10-Fold cross-validation are performed as well as the lasso method for choosing the most relevant variables and rerunning the 10-fold cross-validation on these variables. The procedure is repreated for all three classes of drugs - heroin, ectasy, benzodiazepines. The logarithmic coefficients are explained but exponentiated coefficients are also given.</em></p>
+<pre class="r"><code>drugs &lt;- drugs %&gt;% mutate(heroin_class = ifelse(Heroin == 1 |
+Crack == 1 | Cocaine == 1 | Meth == 1,1,0))
+
+drugs &lt;- drugs %&gt;% mutate(ectasy_class = ifelse(Ectasy == 1 |
+Amphet == 1 | Cannabis == 1 | Cocaine == 1 | Ketamine == 1 | LSD == 1 |
+Mushrooms == 1 | LehalH == 1,1,0))
+
+drugs &lt;- drugs %&gt;% mutate(benzo_class = ifelse(Benzos == 1 |
+Meth == 1 | Amphet == 1 | Cocaine == 1,1,0))
+
+
+# drugs &lt;- drugs %&gt;% mutate(heroin_group_and = ifelse(Heroin == 1 &amp;
+# Crack == 1 &amp; Cocaine == 1 &amp; Meth == 1,1,0))
+# sum(drugs$heroin_group_and==1)
+# The result = 131
+# 131/1884 (total sample) = 0.070 = 7%
+# When the model in the chunk below was run using this variable
+# (or equivalent ones for the two remaining groups of drugs), 
+# the sensitivity was 0 and specificity 1, suggesting that the model was bad.</code></pre>
+<p><strong>Heroin Class</strong></p>
+<p><em>When other model’s factors are kept at 0, increase by one unit in Openess, Neuroticism, impulsive score or ss increases the likelihood of the drug intake by 0.06, 0.006, 0.08 and 0.44 respectively. Increase in Conscientiousness, Extraversion and Agreeableness causes decrease in the drug intake chances by 0.04, 0.03 and 0.04 respectively. The accuracy, true positive rate and true negative rate are reasonable, the auc=0.732 indicates fair level of prediction.</em></p>
+<pre class="r"><code>fit &lt;- glm(heroin_class~oo+cc+ee+aa+nn+impulsive+ss, data=drugs,
+family=&quot;binomial&quot;(link=&quot;logit&quot;))
+coeftest(fit)</code></pre>
+<pre><code>## 
+## z test of coefficients:
+## 
+##               Estimate Std. Error z value  Pr(&gt;|z|)    
+## (Intercept)  0.0519070  0.0503059  1.0318  0.302153    
+## oo           0.0611152  0.0087999  6.9450 3.784e-12 ***
+## cc          -0.0351187  0.0086993 -4.0370 5.415e-05 ***
+## ee          -0.0268628  0.0092426 -2.9064  0.003656 ** 
+## aa          -0.0364609  0.0085336 -4.2726 1.932e-05 ***
+## nn           0.0065261  0.0065387  0.9981  0.318248    
+## impulsive    0.0822912  0.0702720  1.1710  0.241583    
+## ss           0.4498134  0.0729614  6.1651 7.045e-10 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>exp(coef(fit))</code></pre>
+<pre><code>## (Intercept)          oo          cc          ee          aa          nn 
+##   1.0532778   1.0630214   0.9654908   0.9734948   0.9641958   1.0065474 
+##   impulsive          ss 
+##   1.0857720   1.5680196</code></pre>
+<pre class="r"><code>prob &lt;- predict(fit, type=&quot;response&quot;) 
+
+table(predict=as.numeric(prob&gt;.5),truth=drugs$heroin_class)%&gt;%addmargins</code></pre>
+<pre><code>##        truth
+## predict    0    1  Sum
+##     0    594  293  887
+##     1    327  670  997
+##     Sum  921  963 1884</code></pre>
+<pre class="r"><code>class_diag(prob,drugs$heroin_class)</code></pre>
+<pre><code>##        acc      sens      spec      ppv       auc
+## 1 0.670913 0.6957425 0.6449511 0.672016 0.7320906</code></pre>
+<pre class="r"><code>drugs$logit&lt;-predict(fit) #get predicted log-odds
+drugs$fill &lt;-factor(drugs$heroin_class)
+ggplot(drugs,aes(logit, fill=fill))+geom_density(alpha=.3)+
+  geom_vline(xintercept=0,lty=2)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-12-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>library(plotROC)
+drugs$prob1&lt;-predict(fit,type=&quot;response&quot;) 
+ROCplot&lt;-ggplot(drugs)+geom_roc(aes(d=heroin_class,m=prob1), n.cuts=0)
+ROCplot</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-12-2.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>#The AUC value agrees with the confusion matrix data from class_diag function.
+calc_auc(ROCplot)</code></pre>
+<pre><code>##   PANEL group       AUC
+## 1     1    -1 0.7320771</code></pre>
+<p><em>The 10-fold CV caused a slight drop in AUC to 0.705 but the model still has a fair level of predictivity in the out-of-sample data.</em></p>
+<pre class="r"><code># Q5 10-Fold Cross-Validation
+
+k=10
+sample_data &lt;-drugs[sample(nrow(drugs)),] 
+folds&lt;-cut(seq(1:nrow(drugs)),breaks=k,labels=F)
+diags&lt;-NULL
+for(i in 1:k){ # FOR EACH OF 10 FOLDS 
+train&lt;-sample_data[folds!=i,] # CREATE TRAINING SET 
+test&lt;-sample_data[folds==i,] # CREATE TESTING SET
+truth&lt;-test$heroin_class
+fit&lt;- glm(heroin_class~oo+cc+ee+aa+nn+impulsive+ss, data=train, family=&quot;binomial&quot;)
+probs&lt;- predict(fit, newdata=test, type=&quot;response&quot;) 
+diags&lt;-rbind(diags,class_diag(probs,truth)) #CV DIAGNOSTICS FOR EACH FOLD
+} 
+
+summarize_all(diags,mean)</code></pre>
+<pre><code>##         acc      sens      spec       ppv       auc
+## 1 0.6682286 0.6951763 0.6414395 0.6701493 0.7282977</code></pre>
+<p><em>All factors are relevant so no 10-Fold CV needed. This is consistent with the fact that the Big Five personality traits are independent from each other, hence it’s harder for a logistic regression model to reduce these five variables.</em></p>
+<pre class="r"><code># Q6 LASSO
+
+library(glmnet)
+
+y&lt;-as.matrix(drugs$heroin_class) #grab response 
+x&lt;-model.matrix(heroin_class~oo+cc+ee+aa+nn+impulsive+ss, data=drugs)[,-1] #grab predictors
+cv&lt;-cv.glmnet(x,y,family=&quot;binomial&quot;) 
+lasso&lt;-glmnet(x,y,family=&quot;binomial&quot;,lambda=cv$lambda.1se) 
+coef(lasso)</code></pre>
+<pre><code>## 8 x 1 sparse Matrix of class &quot;dgCMatrix&quot;
+##                       s0
+## (Intercept)  0.049007296
+## oo           0.037198009
+## cc          -0.030730725
+## ee          -0.003050411
+## aa          -0.021345515
+## nn           0.003128169
+## impulsive    0.024566435
+## ss           0.368196476</code></pre>
+<p><strong>Ectasy Class</strong></p>
+<p><em>When other model’s factors are kept at 0, increase by one unit in Openess, impulsive score or ss increases the likelihood of the drug intake by 0.11, 0.06, and 0.93 respectively. Increase in Conscientiousness, Extraversion, Agreeableness and Neuroticism causes decrease in the chance of drug intake by 0.07, 0.06, 0.03 and 0.02 respectively. The true positive rate 0.90 is very good, however, the specificity level is quite low 0.54, meaning quite a huge fraction of people can be predicted to try a drug, while they did not. The auc=0.840 indicates an overall good level of prediction.</em></p>
+<pre class="r"><code>fit &lt;- glm(ectasy_class~oo+cc+ee+aa+nn+impulsive+ss, data=drugs,
+family=&quot;binomial&quot;(link=&quot;logit&quot;))
+coeftest(fit)</code></pre>
+<pre><code>## 
+## z test of coefficients:
+## 
+##               Estimate Std. Error z value  Pr(&gt;|z|)    
+## (Intercept)  1.1859087  0.0676146 17.5392 &lt; 2.2e-16 ***
+## oo           0.1100443  0.0106902 10.2939 &lt; 2.2e-16 ***
+## cc          -0.0727081  0.0110477 -6.5813 4.664e-11 ***
+## ee          -0.0607669  0.0117016 -5.1930 2.069e-07 ***
+## aa          -0.0340016  0.0105253 -3.2305  0.001236 ** 
+## nn          -0.0164703  0.0081117 -2.0304  0.042312 *  
+## impulsive    0.0556756  0.0849590  0.6553  0.512259    
+## ss           0.9304759  0.0927179 10.0356 &lt; 2.2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>exp(coef(fit))</code></pre>
+<pre><code>## (Intercept)          oo          cc          ee          aa          nn 
+##   3.2736602   1.1163275   0.9298722   0.9410426   0.9665700   0.9836646 
+##   impulsive          ss 
+##   1.0572547   2.5357158</code></pre>
+<pre class="r"><code>prob &lt;- predict(fit, type=&quot;response&quot;) 
+table(predict=as.numeric(prob&gt;.5),truth=drugs$ectasy_class)%&gt;%addmargins</code></pre>
+<pre><code>##        truth
+## predict    0    1  Sum
+##     0    315  136  451
+##     1    264 1169 1433
+##     Sum  579 1305 1884</code></pre>
+<pre class="r"><code>class_diag(prob,drugs$ectasy_class)</code></pre>
+<pre><code>##         acc      sens      spec       ppv       auc
+## 1 0.7876858 0.8957854 0.5440415 0.8157711 0.8398137</code></pre>
+<pre class="r"><code>drugs$logit&lt;-predict(fit) #get predicted log-odds
+drugs$fill &lt;-factor(drugs$ectasy_class)
+ggplot(drugs,aes(logit, fill=fill))+geom_density(alpha=.3)+
+  geom_vline(xintercept=0,lty=2)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-15-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>library(plotROC)
+drugs$prob1&lt;-predict(fit,type=&quot;response&quot;) 
+ROCplot&lt;-ggplot(drugs)+geom_roc(aes(d=ectasy_class,m=prob1), n.cuts=0)
+ROCplot</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-15-2.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>calc_auc(ROCplot)</code></pre>
+<pre><code>##   PANEL group       AUC
+## 1     1    -1 0.8398256</code></pre>
+<p><em>The 10-fold cross-validation slightly decreased sensitivity value but also slightly increased specificity value. The AUC value decreased by ~ 0.005 but remained on a good prediction level of ~0.835.</em></p>
+<pre class="r"><code># Q5 10-Fold Cross-Validation
+
+k=10
+sample_data &lt;-drugs[sample(nrow(drugs)),] 
+folds&lt;-cut(seq(1:nrow(drugs)),breaks=k,labels=F)
+diags&lt;-NULL
+for(i in 1:k){ # FOR EACH OF 10 FOLDS 
+train&lt;-sample_data[folds!=i,] # CREATE TRAINING SET 
+test&lt;-sample_data[folds==i,] # CREATE TESTING SET
+truth&lt;-test$ectasy_class
+fit&lt;- glm(ectasy_class~oo+cc+ee+aa+nn+impulsive+ss, data=train, family=&quot;binomial&quot;)
+probs&lt;- predict(fit, newdata=test, type=&quot;response&quot;) 
+diags&lt;-rbind(diags,class_diag(probs,truth)) #CV DIAGNOSTICS FOR EACH FOLD
+} 
+
+summarize_all(diags,mean)</code></pre>
+<pre><code>##         acc      sens      spec       ppv       auc
+## 1 0.7882078 0.8947929 0.5447368 0.8168705 0.8344598</code></pre>
+<p><em>The lasso model indicated that neuroticism and impulsive score are redundant in the prediction of the ectasy class.</em></p>
+<pre class="r"><code># Q6 LASSO
+
+library(glmnet)
+
+y&lt;-as.matrix(drugs$ectasy_class) #grab response 
+x&lt;-model.matrix(ectasy_class~oo+cc+ee+aa+nn+impulsive+ss, data=drugs)[,-1] #grab predictors
+cv&lt;-cv.glmnet(x,y,family=&quot;binomial&quot;) 
+lasso&lt;-glmnet(x,y,family=&quot;binomial&quot;,lambda=cv$lambda.1se) 
+coef(lasso)</code></pre>
+<pre><code>## 8 x 1 sparse Matrix of class &quot;dgCMatrix&quot;
+##                      s0
+## (Intercept)  1.05103191
+## oo           0.07823313
+## cc          -0.05594825
+## ee          -0.02149739
+## aa          -0.01565551
+## nn           .         
+## impulsive    .         
+## ss           0.77277137</code></pre>
+<p><em>Even though the two redundant factors were eliminated - nn and impulsiveness - the AUC value remained almost exactly the same (differences of 0.0001 order) indicating that the initial model was not overfitting and also that it is good for both in-sample and out-of-sample data.</em></p>
+<pre class="r"><code># Q6 LASSO 10-Fold CV
+k=10
+sample_data &lt;-drugs[sample(nrow(drugs)),] 
+folds&lt;-cut(seq(1:nrow(drugs)),breaks=k,labels=F)
+diags&lt;-NULL
+for(i in 1:k){ # FOR EACH OF 10 FOLDS 
+train&lt;-sample_data[folds!=i,] # CREATE TRAINING SET 
+test&lt;-sample_data[folds==i,] # CREATE TESTING SET
+truth&lt;-test$ectasy_class
+fit&lt;- glm(ectasy_class~oo+cc+aa+ee+ss, data=train, family=&quot;binomial&quot;)
+probs&lt;- predict(fit, newdata=test, type=&quot;response&quot;) 
+diags&lt;-rbind(diags,class_diag(probs,truth)) #CV DIAGNOSTICS FOR EACH FOLD
+} 
+
+summarize_all(diags,mean)</code></pre>
+<pre><code>##         acc      sens      spec       ppv       auc
+## 1 0.7892829 0.8990688 0.5423728 0.8162456 0.8365736</code></pre>
+<p><strong>Benzodiazepines Class</strong></p>
+<p><em>When other model’s factors are kept at 0, increase by one unit in Openess, Neuroticism, impulsive score or ss increases the likelihood of the drug intake by 0.07, 0.02, 0.04 and 0.41 respectively. Increase in Conscientiousness, Extraversion and Agreeableness causes decrease in the chance of drug intake by 0.04, 0.03 and 0.03 respectively. Very good sensitivity, low specificity and fair level of prediction with the AUC value 0.741 were found.</em></p>
+<pre class="r"><code>fit &lt;- glm(benzo_class~oo+cc+ee+aa+nn+impulsive+ss, data=drugs, 
+family=&quot;binomial&quot;(link=&quot;logit&quot;))
+coeftest(fit)</code></pre>
+<pre><code>## 
+## z test of coefficients:
+## 
+##               Estimate Std. Error z value  Pr(&gt;|z|)    
+## (Intercept)  0.8036349  0.0550511 14.5980 &lt; 2.2e-16 ***
+## oo           0.0705038  0.0091920  7.6701 1.718e-14 ***
+## cc          -0.0419210  0.0094259 -4.4474 8.691e-06 ***
+## ee          -0.0265960  0.0099329 -2.6776  0.007416 ** 
+## aa          -0.0262183  0.0091038 -2.8799  0.003978 ** 
+## nn           0.0153944  0.0069950  2.2008  0.027752 *  
+## impulsive    0.0429568  0.0750627  0.5723  0.567133    
+## ss           0.4123896  0.0775925  5.3148 1.068e-07 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>exp(coef(fit))</code></pre>
+<pre><code>## (Intercept)          oo          cc          ee          aa          nn 
+##   2.2336453   1.0730486   0.9589455   0.9737546   0.9741225   1.0155135 
+##   impulsive          ss 
+##   1.0438928   1.5104228</code></pre>
+<pre class="r"><code>prob &lt;- predict(fit, type=&quot;response&quot;) 
+table(predict=as.numeric(prob&gt;.5),truth=drugs$benzo_class)%&gt;%addmargins</code></pre>
+<pre><code>##        truth
+## predict    0    1  Sum
+##     0    268  137  405
+##     1    368 1111 1479
+##     Sum  636 1248 1884</code></pre>
+<pre class="r"><code>class_diag(prob,drugs$benzo_class)</code></pre>
+<pre><code>##         acc      sens      spec       ppv       auc
+## 1 0.7319533 0.8902244 0.4213836 0.7511832 0.7407349</code></pre>
+<pre class="r"><code>drugs$logit&lt;-predict(fit) #get predicted log-odds
+drugs$fill &lt;-factor(drugs$benzo_class)
+ggplot(drugs,aes(logit, fill=fill))+geom_density(alpha=.3)+
+  geom_vline(xintercept=0,lty=2)</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-19-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>library(plotROC)
+drugs$prob1&lt;-predict(fit,type=&quot;response&quot;) 
+ROCplot&lt;-ggplot(drugs)+geom_roc(aes(d=benzo_class,m=prob1), n.cuts=0)
+ROCplot</code></pre>
+<p><img src="/project2_files/figure-html/unnamed-chunk-19-2.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>calc_auc(ROCplot)</code></pre>
+<pre><code>##   PANEL group       AUC
+## 1     1    -1 0.7407349</code></pre>
+<p><em>A slightly lower AUC value is still within a fair level of prediction suggesting that the original model was not overfitting the values and can be used for the out-of-sample data.</em></p>
+<pre class="r"><code># Q5 10-Fold Cross-Validation
+
+k=10
+sample_data &lt;-drugs[sample(nrow(drugs)),] 
+folds&lt;-cut(seq(1:nrow(drugs)),breaks=k,labels=F)
+diags&lt;-NULL
+for(i in 1:k){ # FOR EACH OF 10 FOLDS 
+train&lt;-sample_data[folds!=i,] # CREATE TRAINING SET 
+test&lt;-sample_data[folds==i,] # CREATE TESTING SET
+truth&lt;-test$benzo_class
+fit&lt;- glm(benzo_class~oo+cc+ee+aa+nn+impulsive+ss, data=train, family=&quot;binomial&quot;)
+probs&lt;- predict(fit, newdata=test, type=&quot;response&quot;) 
+diags&lt;-rbind(diags,class_diag(probs,truth)) #CV DIAGNOSTICS FOR EACH FOLD
+} 
+
+summarize_all(diags,mean)</code></pre>
+<pre><code>##         acc      sens      spec       ppv       auc
+## 1 0.7340763 0.8933625 0.4219937 0.7517265 0.7345053</code></pre>
+<p><em>Lasso model suggests that Extraversion and impulsiveness are redundant.</em></p>
+<pre class="r"><code># Q6 LASSO
+
+library(glmnet)
+
+y&lt;-as.matrix(drugs$benzo_class) #grab response 
+x&lt;-model.matrix(benzo_class~oo+cc+ee+aa+nn+impulsive+ss, data=drugs)[,-1] #grab predictors
+cv&lt;-cv.glmnet(x,y,family=&quot;binomial&quot;) 
+lasso&lt;-glmnet(x,y,family=&quot;binomial&quot;,lambda=cv$lambda.1se) 
+coef(lasso)</code></pre>
+<pre><code>## 8 x 1 sparse Matrix of class &quot;dgCMatrix&quot;
+##                       s0
+## (Intercept)  0.726470626
+## oo           0.039419013
+## cc          -0.032409201
+## ee           .          
+## aa          -0.005990756
+## nn           0.007853034
+## impulsive    .          
+## ss           0.302195556</code></pre>
+<p><em>Again, lasso model shows similar AUC value as the original model. Both models, either with or without Extraversion and impulsive score are fair predictors of the drug intake from the benzodiazepines class. Since the prediction is the same, it makes sense to exclude the two factors picked up by lasso.</em></p>
+<pre class="r"><code># Q6 LASSO 10-Fold CV
+k=10
+sample_data &lt;-drugs[sample(nrow(drugs)),] 
+folds&lt;-cut(seq(1:nrow(drugs)),breaks=k,labels=F)
+diags&lt;-NULL
+for(i in 1:k){ # FOR EACH OF 10 FOLDS 
+train&lt;-sample_data[folds!=i,] # CREATE TRAINING SET 
+test&lt;-sample_data[folds==i,] # CREATE TESTING SET
+truth&lt;-test$benzo_class
+fit&lt;- glm(benzo_class~oo+cc+aa+nn+ss, data=train, family=&quot;binomial&quot;)
+probs&lt;- predict(fit, newdata=test, type=&quot;response&quot;) 
+diags&lt;-rbind(diags,class_diag(probs,truth)) #CV DIAGNOSTICS FOR EACH FOLD
+} 
+
+summarize_all(diags,mean)</code></pre>
+<pre><code>##         acc      sens      spec      ppv       auc
+## 1 0.7219126 0.8869555 0.3996239 0.743077 0.7341528</code></pre>
+<p><em>Overall, all logistic regression models presented are good in not overfitting the data and can be used in out-of-sample data. However, the only model with good level of prediction is the one predicting drug intake from the ectasy class. In all models Openess, impulsivity and sensation seeking was positively correlated with the drug consumption. In all models Conscientiousness, Extraversion and Agreeableness were negatively decreasing a chance of prediction of the drug intake. Higher Neuroticism increased prediction of intake of a drug from the heroin and benzodiazepine class but decreased from the ectasy class. Nevertheless, it’s important to note that the predictibility of these models does not explain the causality e.g. whether personality traits explain the drug consumption pattern or maybe specific class of drugs influences personality traits. Moreover, the grouping of the drugs used in this project is very simplistic and much more complex analysis is needed to reach any real-life conclusions.</em></p>
+</div>

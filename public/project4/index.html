@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Maria Dolak" />
+    <meta name="description" content="Describe your website">
+    <link rel="shortcut icon" type="image/x-icon" href="/img/favicon.ico">
+    <title>msquare</title>
+    <meta name="generator" content="Hugo 0.70.0" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="/css/main.css" />
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,400,200bold,400old" />
+    
+    <!--[if lt IE 9]>
+			<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+			<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+		<![endif]-->
+
+    
+  </head>
+
+  <body>
+    <div id="wrap">
+
+      
+      <nav class="navbar navbar-default">
+  <div class="container">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="/"><i class="fa fa-home"></i></a>
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <div class="navbar-collapse collapse" id="navbar">
+      <ul class="nav navbar-nav navbar-right">
+      
+        
+        <li><a href="/blog/">BLOG</a></li>
+        
+        <li><a href="/papers">PAPERS</a></li>
+        
+        <li><a href="/projects">PROJECTS</a></li>
+        
+        <li><a href="/resume.pdf">RESUME</a></li>
+        
+      
+      </ul>
+    </div>
+  </div>
+</nav>
+
+      
+      <div class="container">
+        <div class="blog-post">
+          <h3>
+            <strong><a href="/project4/">msquare</a></strong>
+          </h3>
+        </div>
+        <div class="blog-title">
+          <h4>
+          January 1, 0001
+            &nbsp;&nbsp;
+            
+          </h4>
+        </div>
+        <div class="panel panel-default">
+          <div class="panel-body">
+            <div class="blogpost">
+              
+
+
+<pre class="r"><code>library(reticulate)</code></pre>
+<pre class="python3"><code>
+class MagicSquare:
+
+    # Create an object with the MagicSquare side size as an input.
+    # It&#39;s properties are the sideLength and a grid - two-dimensional list
+    # representing the content of the MagicSquare.
+    
+    def __init__(self, side):
+        self.sideLength = side
+
+        # Create a 0 matrix with the size of the given MagicSquare side.
+        
+        m = []
+
+        for row in range(int(side)):
+
+            r = []
+            for col in range(int(side)):
+                r.append(0)
+            m.append(r)
+            
+        # Set i to 1. &quot;i&quot; represents a consecutive number added to the matrix.
+        i = 1
+
+        # Set the starting grid position.
+        rowIndex = 0
+        columnIndex = (side//2)
+
+        # Continue a loop until all numbers in a magic square are inserted.
+        for y in range (1,(side**2+1)):
+
+            # Insert the number i into the current grid position.
+
+            m[rowIndex][columnIndex] = i
+
+            # If the last number was inserted ((side length)^2), finish the loop.
+
+            if y == side**2:
+                break
+            else:
+
+                # If i is a multiple of the side length, change matrix position
+                # to one below (south).
+                
+                if i%side == 0:
+                    rowIndex += 1
+
+                    # If position to the south is out of range &gt;&gt;&gt; go
+                    # to the top of this column.
+                    
+                    if (rowIndex) &gt; (side-1):
+                        rowIndex = 0
+                                        
+                else:
+                    
+                    # If i is not a multiple of the side length, change matrix
+                    # position to one up and one right (northeast).
+                    
+                    rowIndex -= 1
+                    columnIndex +=1
+
+                    # If position to the northeast is out of range:
+        
+                    # I case: row index &lt; 0: still move east (leave the 
+                    # columnIndex) but instead of moving one row up, go to the
+                    # most bottom row.
+                    
+                    if rowIndex &lt; 0:
+                        rowIndex = side - 1
+
+                    # II case: column index &gt; (n-1) &gt;&gt;&gt; still go north (leave
+                    # the rowIndex) but instead of moving one column to the
+                    # right, go to the column 0 instead.
+            
+                    if columnIndex &gt; (side -1):
+                        columnIndex = 0
+                    
+
+            # increment i by 1 (consecutive number will be added to the matrix)        
+            i += 1
+
+        # Save the magic square matrix as a property of the MagicSquare object.
+        self.grid = m
+        
+  #  Define a method that displays the MagicSquare grid in a formatted
+  #  (&quot;pretty&quot;) way.
+
+    def display(self):
+
+        numRows = len(self.grid)
+        numCols = len(self.grid[0])
+
+        for row in range (numRows):
+            for col in range (numCols):
+                print(format(self.grid[row][col], &quot;5d&quot;), end=&quot;&quot;)
+            print(&quot;&quot;)
+            print()
+        
+  #  Define the main function that uses the display() method and prints out
+  #  grids of MagicSquares with sides 1,3,5,7,9,11 and 13.
+
+def main():
+
+    for i in range(1,15,2):
+    
+        print(&quot;Magic Square of size&quot;, i)
+        print()
+        magicSquare = MagicSquare(i)
+        magicSquare.display()
+
+main()
+</code></pre>
+
+              <hr>
+              <div class="related-posts">
+                <h5>Related Posts</h5>
+                
+              </div>
+            </div>
+          </div>
+          <hr>
+        <div class="disqus">
+  <div id="disqus_thread"></div>
+  <script type="text/javascript">
+
+    (function() {
+      
+      
+      if (window.location.hostname == "localhost")
+        return;
+
+      var disqus_shortname = '';
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  <a href="http://disqus.com/" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+        </div>
+      </div>
+      
+    </div>
+
+    
+    <footer>
+  <div id="footer">
+    <div class="container">
+      <p class="text-muted">&copy; All rights reserved. Powered by <a href="https://gohugo.io/">Hugo</a> and
+      <a href="http://www.github.com/nurlansu/hugo-sustain/">sustain</a> with ♥</p>
+    </div>
+  </div>
+</footer>
+<div class="footer"></div>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="/js/docs.min.js"></script>
+<script src="/js/main.js"></script>
+
+<script src="/js/ie10-viewport-bug-workaround.js"></script>
+
+
+    
+  </body>
+</html>

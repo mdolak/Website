@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Maria Dolak" />
+    <meta name="description" content="Describe your website">
+    <link rel="shortcut icon" type="image/x-icon" href="/img/favicon.ico">
+    <title>Building Magic Squares using Python</title>
+    <meta name="generator" content="Hugo 0.70.0" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="/css/main.css" />
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,400,200bold,400old" />
+    
+    <!--[if lt IE 9]>
+			<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+			<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+		<![endif]-->
+
+    
+  </head>
+
+  <body>
+    <div id="wrap">
+
+      
+      <nav class="navbar navbar-default">
+  <div class="container">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="/"><i class="fa fa-home"></i></a>
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <div class="navbar-collapse collapse" id="navbar">
+      <ul class="nav navbar-nav navbar-right">
+      
+        
+        <li><a href="/blog/">BLOG</a></li>
+        
+        <li><a href="/papers">PAPERS</a></li>
+        
+        <li><a href="/projects">PROJECTS</a></li>
+        
+        <li><a href="/resume.pdf">RESUME</a></li>
+        
+      
+      </ul>
+    </div>
+  </div>
+</nav>
+
+      
+      <div class="container">
+        <div class="blog-post">
+          <h3>
+            <strong><a href="/blog/building-magic-squares-using-python/">Building Magic Squares using Python</a></strong>
+          </h3>
+        </div>
+        <div class="blog-title">
+          <h4>
+          May 12, 2020
+            &nbsp;&nbsp;
+            
+            <span class="label label-success">python3</span>
+            
+          </h4>
+        </div>
+        <div class="panel panel-default">
+          <div class="panel-body">
+            <div class="blogpost">
+              
+
+
+<p><em>A magic square is a n x n square grid (where n is the number of cells on each side) filled with distinct positive integers in the range 1,2,…,n^2 such that each cell contains a different integer and the sum of the integers in each row, column and diagonal is equal.</em></p>
+<div class="figure">
+<img src="/blog/2020-05-12-building-magic-squares-using-python_files/magic_square.png" width="250" height="200" />
+
+</div>
+<pre class="r"><code>library(reticulate)</code></pre>
+<pre class="python3"><code>
+class MagicSquare:
+
+    # Create an object with the MagicSquare side size as an input.
+    # It&#39;s properties are the sideLength and a grid - two-dimensional list
+    # representing the content of the MagicSquare.
+    
+    def __init__(self, side):
+        self.sideLength = side
+
+        # Create a 0 matrix with the size of the given MagicSquare side.
+        
+        m = []
+
+        for row in range(int(side)):
+
+            r = []
+            for col in range(int(side)):
+                r.append(0)
+            m.append(r)
+            
+        # Set i to 1. &quot;i&quot; represents a consecutive number added to the matrix.
+        i = 1
+
+        # Set the starting grid position.
+        rowIndex = 0
+        columnIndex = (side//2)
+
+        # Continue a loop until all numbers in a magic square are inserted.
+        for y in range (1,(side**2+1)):
+
+            # Insert the number i into the current grid position.
+
+            m[rowIndex][columnIndex] = i
+
+            # If the last number was inserted ((side length)^2), finish the loop.
+
+            if y == side**2:
+                break
+            else:
+
+                # If i is a multiple of the side length, change matrix position
+                # to one below (south).
+                
+                if i%side == 0:
+                    rowIndex += 1
+
+                    # If position to the south is out of range &gt;&gt;&gt; go
+                    # to the top of this column.
+                    
+                    if (rowIndex) &gt; (side-1):
+                        rowIndex = 0
+                                        
+                else:
+                    
+                    # If i is not a multiple of the side length, change matrix
+                    # position to one up and one right (northeast).
+                    
+                    rowIndex -= 1
+                    columnIndex +=1
+
+                    # If position to the northeast is out of range:
+        
+                    # I case: row index &lt; 0: still move east (leave the 
+                    # columnIndex) but instead of moving one row up, go to the
+                    # most bottom row.
+                    
+                    if rowIndex &lt; 0:
+                        rowIndex = side - 1
+
+                    # II case: column index &gt; (n-1) &gt;&gt;&gt; still go north (leave
+                    # the rowIndex) but instead of moving one column to the
+                    # right, go to the column 0 instead.
+            
+                    if columnIndex &gt; (side -1):
+                        columnIndex = 0
+                    
+
+            # increment i by 1 (consecutive number will be added to the matrix)        
+            i += 1
+
+        # Save the magic square matrix as a property of the MagicSquare object.
+        self.grid = m
+        
+  #  Define a method that displays the MagicSquare grid in a formatted
+  #  (&quot;pretty&quot;) way.
+
+    def display(self):
+
+        numRows = len(self.grid)
+        numCols = len(self.grid[0])
+
+        for row in range (numRows):
+            for col in range (numCols):
+                print(format(self.grid[row][col], &quot;5d&quot;), end=&quot;&quot;)
+            print(&quot;&quot;)
+            print()
+        
+  #  Define the main function that uses the display() method and prints out
+  #  grids of MagicSquares with sides 1,3,5,7,9,11 and 13.
+
+def main():
+
+    for i in range(1,15,2):
+    
+        print(&quot;Magic Square of size&quot;, i)
+        print()
+        magicSquare = MagicSquare(i)
+        magicSquare.display()
+
+main()
+</code></pre>
+<p><em>The output looks like this:</em></p>
+<pre class="txt"><code>Magic Square of size 1
+
+    1
+
+Magic Square of size 3
+
+    8    1    6
+
+    3    5    7
+
+    4    9    2
+
+Magic Square of size 5
+
+   17   24    1    8   15
+
+   23    5    7   14   16
+
+    4    6   13   20   22
+
+   10   12   19   21    3
+
+   11   18   25    2    9
+
+Magic Square of size 7
+
+   30   39   48    1   10   19   28
+
+   38   47    7    9   18   27   29
+
+   46    6    8   17   26   35   37
+
+    5   14   16   25   34   36   45
+
+   13   15   24   33   42   44    4
+
+   21   23   32   41   43    3   12
+
+   22   31   40   49    2   11   20
+
+Magic Square of size 9
+
+   47   58   69   80    1   12   23   34   45
+
+   57   68   79    9   11   22   33   44   46
+
+   67   78    8   10   21   32   43   54   56
+
+   77    7   18   20   31   42   53   55   66
+
+    6   17   19   30   41   52   63   65   76
+
+   16   27   29   40   51   62   64   75    5
+
+   26   28   39   50   61   72   74    4   15
+
+   36   38   49   60   71   73    3   14   25
+
+   37   48   59   70   81    2   13   24   35
+
+Magic Square of size 11
+
+   68   81   94  107  120    1   14   27   40   53   66
+
+   80   93  106  119   11   13   26   39   52   65   67
+
+   92  105  118   10   12   25   38   51   64   77   79
+
+  104  117    9   22   24   37   50   63   76   78   91
+
+  116    8   21   23   36   49   62   75   88   90  103
+
+    7   20   33   35   48   61   74   87   89  102  115
+
+   19   32   34   47   60   73   86   99  101  114    6
+
+   31   44   46   59   72   85   98  100  113    5   18
+
+   43   45   58   71   84   97  110  112    4   17   30
+
+   55   57   70   83   96  109  111    3   16   29   42
+
+   56   69   82   95  108  121    2   15   28   41   54
+
+Magic Square of size 13
+
+   93  108  123  138  153  168    1   16   31   46   61   76   91
+
+  107  122  137  152  167   13   15   30   45   60   75   90   92
+
+  121  136  151  166   12   14   29   44   59   74   89  104  106
+
+  135  150  165   11   26   28   43   58   73   88  103  105  120
+
+  149  164   10   25   27   42   57   72   87  102  117  119  134
+
+  163    9   24   39   41   56   71   86  101  116  118  133  148
+
+    8   23   38   40   55   70   85  100  115  130  132  147  162
+
+   22   37   52   54   69   84   99  114  129  131  146  161    7
+
+   36   51   53   68   83   98  113  128  143  145  160    6   21
+
+   50   65   67   82   97  112  127  142  144  159    5   20   35
+
+   64   66   81   96  111  126  141  156  158    4   19   34   49
+
+   78   80   95  110  125  140  155  157    3   18   33   48   63
+
+   79   94  109  124  139  154  169    2   17   32   47   62   77</code></pre>
+
+              <hr>
+              <div class="related-posts">
+                <h5>Related Posts</h5>
+                
+              </div>
+            </div>
+          </div>
+          <hr>
+        <div class="disqus">
+  <div id="disqus_thread"></div>
+  <script type="text/javascript">
+
+    (function() {
+      
+      
+      if (window.location.hostname == "localhost")
+        return;
+
+      var disqus_shortname = '';
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  <a href="http://disqus.com/" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+        </div>
+      </div>
+      
+    </div>
+
+    
+    <footer>
+  <div id="footer">
+    <div class="container">
+      <p class="text-muted">&copy; All rights reserved. Powered by <a href="https://gohugo.io/">Hugo</a> and
+      <a href="http://www.github.com/nurlansu/hugo-sustain/">sustain</a> with ♥</p>
+    </div>
+  </div>
+</footer>
+<div class="footer"></div>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="/js/docs.min.js"></script>
+<script src="/js/main.js"></script>
+
+<script src="/js/ie10-viewport-bug-workaround.js"></script>
+
+
+    
+  </body>
+</html>

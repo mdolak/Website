@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>projects on Portfolio</title>
+    <link>/categories/projects/</link>
+    <description>Recent content in projects on Portfolio</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-US</language>
+    <lastBuildDate>Tue, 12 May 2020 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/categories/projects/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Building Magic Squares using Python</title>
+      <link>/blog/building-magic-squares-using-python/</link>
+      <pubDate>Tue, 12 May 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/blog/building-magic-squares-using-python/</guid>
+      <description>A magic square is a n x n square grid (where n is the number of cells on each side) filled with distinct positive integers in the range 1,2,…,n^2 such that each cell contains a different integer and the sum of the integers in each row, column and diagonal is equal.
+ library(reticulate)  class MagicSquare: # Create an object with the MagicSquare side size as an input. # It&amp;#39;s properties are the sideLength and a grid - two-dimensional list # representing the content of the MagicSquare.</description>
+    </item>
+    
+    <item>
+      <title>Projects</title>
+      <link>/projects/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/projects/</guid>
+      <description>Projects:
+ Analysis of MWM (Morris Water Maze) data prepared using RTrack package Drugs intake based on personality traits Simple adventure game, it requires this file saved in the same directory. Download both files to your computer and run using python 3.  </description>
+    </item>
+    
+  </channel>
+</rss>

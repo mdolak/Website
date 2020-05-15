@@ -1,0 +1,368 @@
+---
+title: "RTrack Analysis"
+author: "Maria Dolak - mkd2287"
+#date created: "3/4/2020"
+#date last modified: "3/16/2020"
+date: "2020-03-16"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r global_options, include=FALSE}
+library(knitr)
+opts_chunk$set(fig.align="center", fig.height=5, message=FALSE, fig.width=8,tidy.opts=list(width.cutoff=60),tidy=TRUE, R.options=list(max.print=100))
+```
+
+**The data for this project was originally collected in my Principal Investigator's - Dr. Michael Drew's - lab at The University of Texas at Austin and published in the paper (Meshi et al., 2006). It investigates effects of an environmental enrichment (hosuing in a cage with toys versus normal housing) and inhibition of hippocampal neurogenesis (treatment with X-rays versus Sham - control) on learning. There were two cohorts of mice, each consisting of 32 mice. Morris Mice Water Maze (MWM) test was used to examine spatial learning.  During the first two days each mouse was placed in a circular pool filled with water and with a visible platform as a goal to which it swam. Each mouse had 3 trials per day. From day 3 to day 7 the MWM test was conducted with an invisible platform so that the actual learing of the path to the goal location was measured as opposed to finding a visible goal (first 2 days). The raw data contains position coordinates across time for each trial (2 cohorts x 32 mice x 7 days x 3 trials) as well as the pool and goal coordinates.**
+
+**Since the time the paper was published, a new R package called Rtrack was released, specifically for analysis of MWM test data, which I used to reanalyse the raw data from my lab. The output of the Rtrack package is what I used in this project. I generated 4 files. They include number of cohort, each individual trial's track ID, each mouse's ID, day of a trial, number of a trial, total path length from the start to the goal, total time to achieve it, classification of a startegy to find the platform (goal), level of turning in the water (turning.absolute), and many other variables, which I omitted due to lack of information about how they were generated through the Rtrack package. Out of these 4 files, there are two with data from the first 2 days (visibele platform), one per mice cohort and there are two files with the remaining days (invisible platform), again one per cohort. Additionally, I added 1 file with information about the housing and x-ray conditions coded for each mouse's ID. Ideally, I expect my data analysis to replicate the data analysis published in the paper. Moreover, I want to further investigate the strategies used to reach the goal used by mice in all 4 groups: Enriched Housing/X-ray, Enriched Housing/Sham, Normal Housing/X-ray, Normal Housing/Sham.**
+
+**Reference: Meshi, D., Drew, M., Saxe, M., Ansorge, M., David, D., Santarelli, L., Malapani, C., Moore, H. and Hen, R., 2006. Hippocampal neurogenesis is not required for behavioral effects of environmental enrichment. Nature Neuroscience, 9(6), pp.729-731.**
+
+*First I installed required packages and called relevant libraries. I set my working directory and read in the data. cohort_1 and cohort_2 contain data with invisible platform - days 3-7 for each cohort respectively. cohort_1_first and cohort_2_first contain data with visible platform - days 1-2 for each cohort respectively. cohort_groups contains information about hosuing and strain (x-ray treatment vs sham tratment) for each mouse's ID.*
+
+```{R}
+
+#install.packages("GGally")
+#install.packages("gridExtra")
+library(tidyverse)
+library(readxl)
+library(ggplot2)
+library(gridExtra)
+library(GGally)
+library(dbplyr)
+
+#setwd("~/Desktop/RTRACK/data_analysis")
+cohort_1 <- read_xlsx("cohort_1_results.xlsx")
+cohort_groups <- read_xlsx("Cohort1_groups.xlsx")
+cohort_2 <- read_xlsx("Cohort2_results.xlsx")
+cohort_1_first <- read_xlsx("First_six_results.xlsx")
+cohort_2_first <- read_xlsx("Cohort2_six_results.xlsx")
+
+```
+*I renamed variables to make the data handling easier e.g. no underscore at the beginning of a variable name. I also renamed TargetID name of mice in all files to enable joining the datasets. I created a variable "total" in which I stacked the rows of all my 4 input files with experimental data using rbind.*
+
+```{r}
+cohort_1 <- cohort_1 %>% rename(TargetID = "_TargetID", Day = "_Day", Trial = "_Trial")
+cohort_2 <- cohort_2 %>% rename(TargetID = "_TargetID", Day = "_Day", Trial = "_Trial")
+cohort_2_first <- cohort_2_first %>% rename(TargetID = "_TargetID", Day = "_Day", Trial = "_Trial")
+cohort_1_first <- cohort_1_first %>% rename(TargetID = "_TargetID", Day = "_Day", Trial = "_Trial")
+cohort_groups <- cohort_groups %>% rename(TargetID = ID)
+total <- rbind(cohort_1_first, cohort_1, cohort_2_first, cohort_2)
+cohort_1$TargetID <- as.numeric(cohort_1$TargetID)
+cohort_2$TargetID <- as.numeric(cohort_2$TargetID)
+```
+
+*I joined each cohort with cohort_groups (by TargetID) using a full_join in order to add information about housing and strain. Further, I selected only relevant columns: TargetID, Day, Trial, path.length, strategy (as a number assigned), Housing, Strain,  total.time; and added one column with the name of strategy. I did it using the column with the numerical index of strategy and the legend provided on the website with documentation to Rtrack package. I repeated this for cohort 2 and then for the total dataset. For the total dataset I created a new column with a unique identification ID for each row, in case I would like to see in the future data for a particular trial. I also created a new column called speed by dividng the path length by the total time. Finally, I combined Housing and Strain information into a single variable as I am interested in analysis of each of the 4 possible groups: Enriched Housing/X-ray, Enriched Housing/Sham, Normal Housing/X-ray, Normal Housing/Sham. Glimpsee of thus created total dataset is shown.*
+
+```{R}
+# Cohort 1
+c1_full <- full_join(cohort_1, cohort_groups) %>% rename(Strain = Tx)
+
+c1 <- c1_full %>% select(TargetID, Day ,Trial ,path.length, strategy, Housing,
+Strain, total.time)
+
+# adding a column with a name of the strategy based on the website: https://rupertoverall.net/Rtrack/articles/Rtrack_strategy_description.html
+c1 <- c1 %>% mutate(strategy_name = case_when(strategy == 1 ~ "thigmotaxis",
+strategy == 2 ~"circling", strategy == 3 ~ "random", strategy == 4 ~ "scanning", 
+strategy == 5 ~ "chaining", strategy == 6 ~ "goal-directed search", 
+strategy == 7 ~ "corrected search", strategy == 8 ~ "direct path")) 
+
+# Cohort 2
+c2_full <- full_join(cohort_2, cohort_groups) %>% rename(Strain = Tx)
+
+c2 <- c2_full %>% select(TargetID, Day ,Trial ,path.length, strategy, Housing, Strain, total.time)
+
+# adding a column with a name of the strategy based on the website
+c2 <- c2 %>% mutate(strategy_name = case_when(strategy == 1 ~ "thigmotaxis",
+strategy == 2 ~"circling",strategy == 3 ~ "random", strategy == 4 ~ "scanning", 
+strategy == 5 ~ "chaining", strategy == 6 ~ "goal-directed search", 
+strategy == 7 ~ "corrected search", strategy == 8 ~ "direct path"))
+
+# Total dataset
+
+total$TargetID <- as.numeric(total$TargetID)
+total_full <- full_join(total, cohort_groups) %>% rename(Strain = Tx)
+total <- total_full %>% select(Cohort, Track_ID, TargetID, Day ,Trial, 
+path.length, strategy, Housing, Strain, total.time)
+
+# adding a column with a name of the strategy based on the website
+total <- total %>% mutate(strategy_name = case_when(strategy == 1 ~ "thigmotaxis",
+strategy == 2 ~"circling", strategy == 3 ~ "random", strategy == 4 ~ "scanning",
+strategy == 5 ~ "chaining", strategy == 6 ~ "goal-directed search", 
+strategy == 7 ~ "corrected search", strategy == 8 ~ "direct path"))
+
+total <- total %>% unite(Cohort, Track_ID, col="unique",sep="_", remove = F) 
+total <- total %>% mutate(speed = path.length/total.time)
+
+total_united <- total %>% unite(Housing, Strain, col="Mice_group",sep=" ")
+
+glimpse(total_united)
+head(total_united)
+```
+
+*I created a variable that shows a summary of mean path length from all three trials conducted on a particular day for each mouse. Its standard deviation (sd) and standard error of mean (sem) are also added. Based on this variable, I created another one that summarizes a mean of means from all mice within a particular mice group for each day. Its standard deviation (sd) and standard error of mean (sem) are also included.*
+
+```{R}
+# Creates mean of all trials for each mouse grouped by day
+total_avg_per_day <- total_united %>% filter(Trial != 22) %>% 
+group_by(Mice_group, TargetID, Day) %>% summarise(mean_length = mean(path.length), 
+n=n(), sd=sd(path.length), sem=sd/sqrt(n)) %>% arrange(Day) %>% 
+select(Day, Mice_group, TargetID, mean_length, n, sd, sem)
+
+total_avg_per_day 
+
+# Creates daily mean from the means of each mouse grouped by Mice_group
+total_day_avg <- total_avg_per_day %>% group_by(Mice_group, Day) %>%
+summarise(day_mean_length_for_all = mean(mean_length), n = n(), 
+sd = sd(mean_length),sem=sd/sqrt(n)) %>% select(Day, Mice_group, 
+day_mean_length_for_all, n, sd, sem) %>% arrange(Day)
+
+total_day_avg
+```
+
+*I've used this variable to create a plot of mean path length for each day grouped by mice group. First two days refer to the visible platform hence all groups achieved a similar result. When the platform was invisible, the mean path length between starting position and the goal decreased with time for all groups, indicating the mice learned the path to the platform. However, as can be seen on the graph, the mice in the group with enriched hosuing - Enriched Sham and Enriched X-ray - have learned the path to the goal sooner in comparison to the mice from the two other groups as indicated by shorter mean path length on a particular day. This suggests that it's the housing condition that is decisive for learning in this experiment. The error bars show esepcially significant difference on the days 6 and 7*
+
+```{r}
+total_day_avg %>% ggplot(aes(Day,day_mean_length_for_all, fill = Mice_group)) + geom_bar(stat="identity",position="dodge") + 
+geom_errorbar(aes(x = Day, y = day_mean_length_for_all, 
+ymin=day_mean_length_for_all - sem, ymax = day_mean_length_for_all + sem), 
+position = "dodge") + labs(y="Mean path length (cm)", x = "Days") + 
+ggtitle("Figure 1. Mean path length for each day based on mice group.") + 
+theme(plot.title = element_text(hjust = 0.1)) + 
+scale_x_discrete(limits=c(1,2,3,4,5,6,7)) + geom_vline(aes(xintercept=2.5), linetype="dashed")
+
+# The dashed line separates days with visible platform (1-2) from days with the invisible one.
+```
+
+*In order to analyse this data in more details, I compared the same results as obtained above for trials with visible and invisible platform for each cohort separately. head() for cohort 1 data shown to present the output (see also two chunks above). I repeated the same for cohort 2. I consequently created 4 graphs, 2 per cohort. They present the same data, however, one is linear to illustrate clearly the trend, and the other one uses geom_bar, in order to illustrate clearly the significance of the results as indicated by the error bars. I obtained the same type of graph as the one above, however, I used the stat="summary" instead of manually entering summary statistics. I compiled all the graphs into one figure. Cohort 1 is shown on the left side, cohort 2 is shown on the right side. Standard error of mean as the error bars.*  
+
+```{r}
+# Cohort 1
+
+# Unite housing and x-ray treatment into one categorical variable
+c1_united <- c1 %>% unite(Housing, Strain, col="Mice_group",sep=" ")
+
+# Creates mean of all trials for each mouse grouped by day
+# Trial 22 excluded as it was a pilot trial (trial 
+# made in order to establish the parameters for the whole experiment)
+c1_ID_avg_per_day <- c1_united %>% filter(Trial != 22) %>% 
+group_by(Mice_group, TargetID, Day) %>% summarise(mean_length = 
+mean(path.length), n=n(), sd=sd(path.length), sem=sd/sqrt(n)) %>% 
+arrange(Day) %>% select(TargetID, Day, Mice_group, mean_length, n, sd, sem)
+head(c1_ID_avg_per_day)
+
+# Creates daily mean from the means of each mouse grouped by Mice_group
+c1_day_avg <- c1_ID_avg_per_day %>% group_by(Mice_group,Day) %>% 
+summarise(day_mean_length_for_all = mean(mean_length), n = n(), sd = 
+sd(mean_length),sem=sd/sqrt(n)) %>% select(Day, Mice_group, 
+day_mean_length_for_all, n, sd, sem) %>% arrange(Day)
+
+head(c1_day_avg)
+
+c1_day_avg <- c1_day_avg %>% mutate(Day= as.numeric(Day))
+
+g1 <- c1_day_avg %>% ggplot(aes(Day,day_mean_length_for_all)) + 
+geom_line(stat="identity", aes(color = Mice_group)) + 
+geom_errorbar(aes(x = Day, y = day_mean_length_for_all, 
+ymin=day_mean_length_for_all - sem, ymax = day_mean_length_for_all + sem), 
+width = 0.5) + labs(y="Mean path length (cm)", x = "Days") + 
+ggtitle("Cohort 1") + theme(plot.title = element_text(hjust = 0.5))
+
+g2 <- c1_united %>% filter(Trial != 22) %>% group_by(Mice_group, 
+TargetID, Day) %>% summarise(mean_length = mean(path.length), n=n(), 
+sd=sd(path.length), sem=sd/sqrt(n)) %>% ggplot() + geom_bar(aes(x = Day, 
+y=mean_length, fill = Mice_group), stat="summary", fun.y="mean", 
+position ="dodge") + geom_errorbar(aes(x = Day, y=mean_length, fill = Mice_group), 
+stat="summary", position="dodge") + labs(y="Mean path length (cm)", x = "Days")
+
+# Cohort 2
+
+# Unite housing and x-ray treatment into one categorical variable
+c2_united <- c2 %>% unite(Housing, Strain, col="Mice_group",sep=" ")
+# c1_united %>% select(Mice_group, TargetID, Day, path.length, total.time)
+
+# Creates mean of all trials for each mouse grouped by day
+c2_ID_avg_per_day <- c2_united %>% filter(Trial != 22) %>%
+group_by(Mice_group, TargetID, Day) %>% summarise(mean_length = 
+mean(path.length), n=n(), sd=sd(path.length), sem=sd/sqrt(n)) %>%
+arrange(Day) %>% select(TargetID, Day, Mice_group, mean_length, n, sd, sem)
+
+# Creates daily mean from the means of each mouse grouped by Mice_group
+c2_day_avg <- c2_ID_avg_per_day %>% group_by(Mice_group,Day) %>%
+summarise(day_mean_length_for_all = mean(mean_length), n = n(), 
+sd = sd(mean_length),sem=sd/sqrt(n)) %>% select(Day, Mice_group, 
+day_mean_length_for_all, n, sd, sem) %>% arrange(Day)
+
+c2_day_avg <- c2_day_avg %>% mutate(Day= as.numeric(Day))
+
+g3 <- c2_day_avg %>% ggplot(aes(Day,day_mean_length_for_all)) + 
+geom_line(stat="identity", aes(color = Mice_group)) + geom_errorbar(aes(x = Day, 
+y = day_mean_length_for_all, ymin=day_mean_length_for_all - sem, 
+ymax = day_mean_length_for_all + sem), width = 0.5) + 
+labs(y="Mean path length (cm)", x = "Days") + ggtitle("Cohort 2") + 
+theme(plot.title = element_text(hjust = 0.5))
+
+g4 <- c2_united %>% filter(Trial != 22) %>% group_by(Mice_group, TargetID, Day) %>% summarise(mean_length = mean(path.length), n=n(), sd=sd(path.length),                                   sem=sd/sqrt(n)) %>% ggplot() + geom_bar(aes(x = Day, y=mean_length, fill = Mice_group),
+stat="summary", fun.y="mean", position ="dodge") + 
+geom_errorbar(aes(x = Day, y=mean_length, fill = Mice_group), 
+stat="summary", position="dodge") + labs(y="Mean path length (cm)", x = "Days")
+
+grid.arrange(g1, g3, g2, g4, nrow = 2, ncol = 2)
+```
+
+*In both cohorts, the mean path length from the start position to the goal becomes shorter with each day, indicating the mice acquire spatial memory of the goal within a pool. The decrease is more visible in the Cohort 2. The sudden increase after the day 4 in the Normal X-ray group in the Cohort 1 is potentially due to individual differences in the mice used in the experiment. The steepest decrease in the mean path length for Enriched X-Ray group in both cohorts shows fast learning in this relatively to other groups, despite the block of neurogenesis through X-ray. Hence, neurogenesis does not seem to have a huge impact on spetial memory.*
+
+
+*Subsequently, I analysed strategies used by mice. I counted each strategy during each day and expressed it as a proportion out of 192 (2 cohorts x 32 mice x 3 trials/day). Then, I grouped the results by mice group and presented the graph for each group (4 in total) in one figure.*
+
+```{r}
+strategy_count <- total %>% group_by(Day, strategy_name) %>% count()
+strategy_count <- strategy_count %>% mutate(proportion = n/192)
+
+head(strategy_count)
+
+ggplot(strategy_count, aes(x = Day, y = proportion, fill= strategy_name))+
+geom_bar(stat="identity") + geom_vline(aes(xintercept=2.5), linetype="dashed") + 
+ggtitle("Figure 3. Proportion of goal searching strategies for each day.")
+
+strategy_counts <- total_united %>% group_by(Mice_group, Day, strategy_name) %>%
+count() %>% mutate(proportion = n/192)
+head(strategy_counts)
+
+ggplot(strategy_counts, aes(x = Day, y = proportion, fill= strategy_name))+
+geom_bar(stat="identity") + geom_vline(aes(xintercept=2.5), linetype="dashed") + 
+facet_wrap(~Mice_group) + 
+ggtitle("Figure 4. Goal searching strategies for each hosuing-strain group.")
+
+# The dashed line separates days with visible platform (1-2) from days 
+# with the invisible one.
+```
+
+*The most dominant strategy during the test days with a visible platform, according to the Figure 3, is "goal-directed search". This is consistent with the hypothesis that when the goal is visible, most mice can reach it directly. Thigmotaxis means circling of a mouse along the edge of a pool. It can indicate mouse's anxiety and/or inability to find the platform. The figure 4 shows that the proportion of thigmotaxis is zero during trials with invisible platform for groups with an enriched housing as opposed to normal housing. The proportion of the corrected search as well as goal-directed search increases more in enriched hosuing groups in comparison to normal housing groups. Moreover, there is a proportion of random path in groups with normal hosuing but almost none in enriched hosuing groups. This supports the evidence that housing is the crucial factor for spatial learning in this study. Nevertheless, the proportion of scanning is dominant and similar among all groups showing that the trial/error strategy is most prelevant in the MWM test in these experiments.*
+
+*TrackID is unique for each mouse and trial within one cohort - M stands for a mouse's ID and T for the trial's number - but it's duplicated in the other cohort. I used pivot_wider to create a variable with mean path length for each mouse (TrackID), however, I separated it into two columns - for cohort 1 and cohort 2. I repeated the procedure in order to create a variable with mean total time for each cohort. Then I fully joined both variables, thereby creating a dataset enabling direct comparison of each equivalent trial in both cohorts. The glimpse of the output shown. Then I used summarise to calculate the mean lenth and mean total time based on mice group for each day. I used this data to create a correlation matrix for numeric variables.*
+
+```{r}
+trial <- total_full %>% select(Cohort, Track_ID, TargetID, Day ,Trial, 
+path.length, strategy, Housing, Strain, total.time) %>%
+unite(Housing, Strain, col="Mice_group",sep=" ") %>% 
+group_by(Cohort,Mice_group, Day, Track_ID) %>%
+summarise(mean_length = mean(path.length)) %>% pivot_wider(names_from="Cohort", values_from="mean_length") %>% rename("coh1_length" = "1", "coh2_length" = "2")
+head(trial)
+
+trial2 <- total_full %>% select(Cohort, Track_ID, TargetID, Day ,Trial, 
+path.length, strategy, Housing, Strain, total.time) %>%
+unite(Housing, Strain, col="Mice_group",sep=" ") %>% 
+group_by(Cohort, Track_ID, Mice_group, Day) %>%
+summarise(mean_time = mean(total.time)) %>%
+pivot_wider(names_from="Cohort", values_from="mean_time") %>%
+rename("coh1_time" = "1", "coh2_time" = "2")
+head(trial2)
+
+cohorts_comparison <- full_join(trial, trial2)
+
+head(cohorts_comparison)
+glimpse(cohorts_comparison) 
+
+# 672 observations = 21 trials * 32 mice per cohort
+
+cohorts_comparison_summary <- cohorts_comparison %>%
+group_by(Mice_group, Day) %>% summarise(coh1_mean_length = mean(coh1_length), 
+coh2_mean_length = mean(coh2_length), coh1_mean_time = mean(coh1_time), coh2_mean_time = mean(coh2_time)) 
+
+head(cohorts_comparison_summary)
+
+coh_nums <- cohorts_comparison_summary %>% select_if(is.numeric) %>%
+as.data.frame() %>% select(-1)
+cor(coh_nums)
+
+```
+*The correlation matrix shows that mean path length is highly correlated with the mean total time in both cohorts, therefore, one is an almost perfect predictor of the other (correlation of ~0.99). This makes sense as the shorter the path to the goal, the less time it takes to reach it. This matrix also shows a strong correlation of mean path length between both cohorts as well as a strong correlation of mean total time between both cohorts, which means the cohort 2 succesfully replicated data of the cohort 1, which was the goal.*
+
+*An additional visualisation of the correlations using correlation heatmap for total time and path length as above +  goal searching strategy used and speed variable added. There is a negative correlation between path length/time and strategy, which reflects a correlation between the longer path/more time to reach the goal and thigmotaxis or trial/error strategies (as they score lower in the index variable called "strategy"). Alternatively, high scoring strategies, like corrected search, positively correate with short path length/total time.*
+
+```{r}
+total %>%select_if(is.numeric) %>% select(-1, -2) %>% cor %>%
+as.data.frame %>% rownames_to_column %>% pivot_longer(-1) %>%
+ggplot(aes(rowname, name, fill=value))+geom_tile()+
+geom_text(aes(label=round(value,2)))+xlab("")+ylab("")
+```
+
+
+*Lastly, I performed cluster analysis, however, I need to admit that my data is not perfect for this purpose. I excluded trials from the day 1 and 2 to leave only the actual trials with an invisible platform. Pilot trial 22 was also excluded. I decided to include the absolute turning value of mice and velocity, both calculated using Rtrack package. I used summarise to calculate the mean of path length, total time, turning value and velocity. I saved the variable as a data frame and run thorugh a loop in order to determine an optimal number of clusters for PAM analysis. I visualised the correlations using the suggested number of clusters, which is 3. As predcited, the path length and time are highly positively correlated and at the same time they are strongly negatively correlated with strategies. Turning is positively correlated with strategies, which is suprising as more turns would be expected to predict a longer and more random path. The explanation requires further investigation of how this variable is created within the Rtrack package. Although the suggested number of clusters was 3, ultimately I decided to use just two as they accounted for 94.5% of the data and still had a reasonable structure according to Average Silhouette Width value, which is 0.65.*
+
+```{r}
+library(tidyverse)
+library(cluster)
+
+total_full_united <- total_full %>% unite(Housing, Strain,
+col="Mice_group",sep=" ")
+total_full_united <- total_full_united %>%
+mutate(speed = path.length/total.time)
+
+tot <- total_full_united %>% filter(Trial != 22, Day !=1, Day != 2) %>%
+group_by(Mice_group, TargetID, Day, strategy) %>%
+summarise(mean_length = mean(path.length), mean_time = mean(total.time),
+turn = mean(turning.absolute), velocity = mean(mean.velocity))
+head(tot)
+
+tot2 <- tot %>% group_by(Mice_group, Day,strategy) %>%
+summarise(day_mean_length_for_all = mean(mean_length),
+day_mean_time_for_all = mean(mean_time), mean_turn = mean(turn),
+mean_velocity = mean(velocity)) %>% arrange(Day)
+
+tot3 <- tot2 %>% as.data.frame() %>% select(-1,-2)
+tot4 <- tot2 %>% as.data.frame()
+glimpse(tot3)
+
+X <- tot3 %>% select(1:5) %>% scale
+head(round(X,3))
+
+# checking number of clusters
+
+grouping <- vector()
+for(i in 2:10){
+  pam_fit <- tot3 %>% pam(i)
+  grouping[i] <- pam_fit$silinfo$avg.width
+} 
+ggplot()+geom_line(aes(x=1:10,y=grouping))+
+scale_x_continuous(name="k",breaks=1:10)
+
+# run pam for 3
+pam3 <- tot3 %>% select(-1,-2) %>% pam(k=3)
+pam3
+plot(pam3, which=2)
+plot(pam3, which=1)
+
+# visualise correlations
+tot3 %>% mutate(cluster=as.factor(pam3$clustering)) %>%
+ggpairs(columns = 1:5, aes(color=cluster))
+
+# maybe 2 clusters better
+
+# compare to two 
+pam2 <- tot3 %>% select(-1,-2) %>% pam(k=2)
+pam2
+plot(pam2, which=2)
+plot(pam2, which=1)
+
+# The choice of 2 clusters
+
+tot5 <- tot4 %>% mutate(cluster=as.factor(pam2$clustering)) %>%
+select(Mice_group, cluster, everything())
+#tot4
+tot5$strategy <- as.factor(tot5$strategy)
+
+ggplot(tot5, aes(x=day_mean_length_for_all,y=mean_turn, 
+color=strategy, shape = cluster)) + geom_point() +
+labs(title="PAM visualisation", y="Mean Velocity", x="Mean Path Length (cm)") + scale_color_manual(name="Strategy", labels = c("thigmotaxis","circling",
+"random","scanning", "chaining", "goal-directed search", "corrected search",
+"direct path"), values = c("1"="blue", "2"="#00BA38", "3"="purple",
+"4"="#00BCD8", "5"="brown", "6"="orange", "7" = "#FF67A4")) + geom_vline(aes(xintercept=1500), linetype="dashed")                                        
+
+```
+
+*A 2D graph of PAM analysis with clusters presented as shapes and strategies as colors. The dashed line clearly separates the two clusters. It divides the mean path length at around 1500cm. It's worth mentioning that all mean turn values above 1.5 are on the left side of this line and that the turning values for all data points on the right side of the line are significantly less widespread. Although more data is required to reach a valid conclusion, the classification into one of these two clusters could for example be used to determine whether a particular mouse has already acquired spatial memory of the goal in the pool or if it is still learning, which would be really useful for both quantitative and behavioral analysis.*
+
+**To conclude, my analysis is in line with the data published in the paper (Meshi et al., 2006), making the Rtrack package a very promising tool for an analysis of Mice Water Maze data.**

@@ -1,0 +1,132 @@
+---
+title: "msquare"
+author: "Maria Dolak"
+date: "5/14/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(reticulate)
+```
+
+```{python3}
+
+class MagicSquare:
+
+    # Create an object with the MagicSquare side size as an input.
+    # It's properties are the sideLength and a grid - two-dimensional list
+    # representing the content of the MagicSquare.
+    
+    def __init__(self, side):
+        self.sideLength = side
+
+        # Create a 0 matrix with the size of the given MagicSquare side.
+        
+        m = []
+
+        for row in range(int(side)):
+
+            r = []
+            for col in range(int(side)):
+                r.append(0)
+            m.append(r)
+            
+        # Set i to 1. "i" represents a consecutive number added to the matrix.
+        i = 1
+
+        # Set the starting grid position.
+        rowIndex = 0
+        columnIndex = (side//2)
+
+        # Continue a loop until all numbers in a magic square are inserted.
+        for y in range (1,(side**2+1)):
+
+            # Insert the number i into the current grid position.
+
+            m[rowIndex][columnIndex] = i
+
+            # If the last number was inserted ((side length)^2), finish the loop.
+
+            if y == side**2:
+                break
+            else:
+
+                # If i is a multiple of the side length, change matrix position
+                # to one below (south).
+                
+                if i%side == 0:
+                    rowIndex += 1
+
+                    # If position to the south is out of range >>> go
+                    # to the top of this column.
+                    
+                    if (rowIndex) > (side-1):
+                        rowIndex = 0
+                                        
+                else:
+                    
+                    # If i is not a multiple of the side length, change matrix
+                    # position to one up and one right (northeast).
+                    
+                    rowIndex -= 1
+                    columnIndex +=1
+
+                    # If position to the northeast is out of range:
+        
+                    # I case: row index < 0: still move east (leave the 
+                    # columnIndex) but instead of moving one row up, go to the
+                    # most bottom row.
+                    
+                    if rowIndex < 0:
+                        rowIndex = side - 1
+
+                    # II case: column index > (n-1) >>> still go north (leave
+                    # the rowIndex) but instead of moving one column to the
+                    # right, go to the column 0 instead.
+            
+                    if columnIndex > (side -1):
+                        columnIndex = 0
+                    
+
+            # increment i by 1 (consecutive number will be added to the matrix)        
+            i += 1
+
+        # Save the magic square matrix as a property of the MagicSquare object.
+        self.grid = m
+        
+  #  Define a method that displays the MagicSquare grid in a formatted
+  #  ("pretty") way.
+
+    def display(self):
+
+        numRows = len(self.grid)
+        numCols = len(self.grid[0])
+
+        for row in range (numRows):
+            for col in range (numCols):
+                print(format(self.grid[row][col], "5d"), end="")
+            print("")
+            print()
+        
+  #  Define the main function that uses the display() method and prints out
+  #  grids of MagicSquares with sides 1,3,5,7,9,11 and 13.
+
+def main():
+
+    for i in range(1,15,2):
+    
+        print("Magic Square of size", i)
+        print()
+        magicSquare = MagicSquare(i)
+        magicSquare.display()
+
+main()
+
+```
+
+
+

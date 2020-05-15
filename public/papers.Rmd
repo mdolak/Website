@@ -1,0 +1,17 @@
+---
+title: "papers"
+author: "Maria Dolak"
+output: html_document
+showpagemeta: false
+---
+2020:
+
+- [3-dimensional reconstructions of neuropil in hippocampus of aged-impaired and young rats](/finalneu.pdf)
+
+2018:
+
+- [How can defects in primary cilia cause birth defects?](/cilia.pdf)
+
+2017:
+
+- [The Nobel Prize in Physiology or Medicine 1981 - D.H Hubel and T.N Wiesel "for their discoveries concerning information processing in the visual system"](/hubel_wiesel.pdf)

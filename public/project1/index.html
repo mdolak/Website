@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Maria Dolak" />
+    <meta name="description" content="Describe your website">
+    <link rel="shortcut icon" type="image/x-icon" href="/img/favicon.ico">
+    <title>RTrack Analysis</title>
+    <meta name="generator" content="Hugo 0.70.0" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="/css/main.css" />
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,400,200bold,400old" />
+    
+    <!--[if lt IE 9]>
+			<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+			<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+		<![endif]-->
+
+    
+  </head>
+
+  <body>
+    <div id="wrap">
+
+      
+      <nav class="navbar navbar-default">
+  <div class="container">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="/"><i class="fa fa-home"></i></a>
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <div class="navbar-collapse collapse" id="navbar">
+      <ul class="nav navbar-nav navbar-right">
+      
+        
+        <li><a href="/blog/">BLOG</a></li>
+        
+        <li><a href="/papers">PAPERS</a></li>
+        
+        <li><a href="/projects">PROJECTS</a></li>
+        
+        <li><a href="/resume.pdf">RESUME</a></li>
+        
+      
+      </ul>
+    </div>
+  </div>
+</nav>
+
+      
+      <div class="container">
+        <div class="blog-post">
+          <h3>
+            <strong><a href="/project1/">RTrack Analysis</a></strong>
+          </h3>
+        </div>
+        <div class="blog-title">
+          <h4>
+          March 16, 2020
+            &nbsp;&nbsp;
+            
+          </h4>
+        </div>
+        <div class="panel panel-default">
+          <div class="panel-body">
+            <div class="blogpost">
+              
+
+
+<p><strong>The data for this project was originally collected in my Principal Investigator’s - Dr. Michael Drew’s - lab at The University of Texas at Austin and published in the paper (Meshi et al., 2006). It investigates effects of an environmental enrichment (hosuing in a cage with toys versus normal housing) and inhibition of hippocampal neurogenesis (treatment with X-rays versus Sham - control) on learning. There were two cohorts of mice, each consisting of 32 mice. Morris Mice Water Maze (MWM) test was used to examine spatial learning. During the first two days each mouse was placed in a circular pool filled with water and with a visible platform as a goal to which it swam. Each mouse had 3 trials per day. From day 3 to day 7 the MWM test was conducted with an invisible platform so that the actual learing of the path to the goal location was measured as opposed to finding a visible goal (first 2 days). The raw data contains position coordinates across time for each trial (2 cohorts x 32 mice x 7 days x 3 trials) as well as the pool and goal coordinates.</strong></p>
+<p><strong>Since the time the paper was published, a new R package called Rtrack was released, specifically for analysis of MWM test data, which I used to reanalyse the raw data from my lab. The output of the Rtrack package is what I used in this project. I generated 4 files. They include number of cohort, each individual trial’s track ID, each mouse’s ID, day of a trial, number of a trial, total path length from the start to the goal, total time to achieve it, classification of a startegy to find the platform (goal), level of turning in the water (turning.absolute), and many other variables, which I omitted due to lack of information about how they were generated through the Rtrack package. Out of these 4 files, there are two with data from the first 2 days (visibele platform), one per mice cohort and there are two files with the remaining days (invisible platform), again one per cohort. Additionally, I added 1 file with information about the housing and x-ray conditions coded for each mouse’s ID. Ideally, I expect my data analysis to replicate the data analysis published in the paper. Moreover, I want to further investigate the strategies used to reach the goal used by mice in all 4 groups: Enriched Housing/X-ray, Enriched Housing/Sham, Normal Housing/X-ray, Normal Housing/Sham.</strong></p>
+<p><strong>Reference: Meshi, D., Drew, M., Saxe, M., Ansorge, M., David, D., Santarelli, L., Malapani, C., Moore, H. and Hen, R., 2006. Hippocampal neurogenesis is not required for behavioral effects of environmental enrichment. Nature Neuroscience, 9(6), pp.729-731.</strong></p>
+<p><em>First I installed required packages and called relevant libraries. I set my working directory and read in the data. cohort_1 and cohort_2 contain data with invisible platform - days 3-7 for each cohort respectively. cohort_1_first and cohort_2_first contain data with visible platform - days 1-2 for each cohort respectively. cohort_groups contains information about hosuing and strain (x-ray treatment vs sham tratment) for each mouse’s ID.</em></p>
+<pre class="r"><code>#install.packages(&quot;GGally&quot;)
+#install.packages(&quot;gridExtra&quot;)
+library(tidyverse)
+library(readxl)
+library(ggplot2)
+library(gridExtra)
+library(GGally)
+library(dbplyr)
+
+#setwd(&quot;~/Desktop/RTRACK/data_analysis&quot;)
+cohort_1 &lt;- read_xlsx(&quot;cohort_1_results.xlsx&quot;)
+cohort_groups &lt;- read_xlsx(&quot;Cohort1_groups.xlsx&quot;)
+cohort_2 &lt;- read_xlsx(&quot;Cohort2_results.xlsx&quot;)
+cohort_1_first &lt;- read_xlsx(&quot;First_six_results.xlsx&quot;)
+cohort_2_first &lt;- read_xlsx(&quot;Cohort2_six_results.xlsx&quot;)</code></pre>
+<p><em>I renamed variables to make the data handling easier e.g. no underscore at the beginning of a variable name. I also renamed TargetID name of mice in all files to enable joining the datasets. I created a variable “total” in which I stacked the rows of all my 4 input files with experimental data using rbind.</em></p>
+<pre class="r"><code>cohort_1 &lt;- cohort_1 %&gt;% rename(TargetID = &quot;_TargetID&quot;, Day = &quot;_Day&quot;, Trial = &quot;_Trial&quot;)
+cohort_2 &lt;- cohort_2 %&gt;% rename(TargetID = &quot;_TargetID&quot;, Day = &quot;_Day&quot;, Trial = &quot;_Trial&quot;)
+cohort_2_first &lt;- cohort_2_first %&gt;% rename(TargetID = &quot;_TargetID&quot;, Day = &quot;_Day&quot;, Trial = &quot;_Trial&quot;)
+cohort_1_first &lt;- cohort_1_first %&gt;% rename(TargetID = &quot;_TargetID&quot;, Day = &quot;_Day&quot;, Trial = &quot;_Trial&quot;)
+cohort_groups &lt;- cohort_groups %&gt;% rename(TargetID = ID)
+total &lt;- rbind(cohort_1_first, cohort_1, cohort_2_first, cohort_2)
+cohort_1$TargetID &lt;- as.numeric(cohort_1$TargetID)
+cohort_2$TargetID &lt;- as.numeric(cohort_2$TargetID)</code></pre>
+<p><em>I joined each cohort with cohort_groups (by TargetID) using a full_join in order to add information about housing and strain. Further, I selected only relevant columns: TargetID, Day, Trial, path.length, strategy (as a number assigned), Housing, Strain, total.time; and added one column with the name of strategy. I did it using the column with the numerical index of strategy and the legend provided on the website with documentation to Rtrack package. I repeated this for cohort 2 and then for the total dataset. For the total dataset I created a new column with a unique identification ID for each row, in case I would like to see in the future data for a particular trial. I also created a new column called speed by dividng the path length by the total time. Finally, I combined Housing and Strain information into a single variable as I am interested in analysis of each of the 4 possible groups: Enriched Housing/X-ray, Enriched Housing/Sham, Normal Housing/X-ray, Normal Housing/Sham. Glimpsee of thus created total dataset is shown.</em></p>
+<pre class="r"><code># Cohort 1
+c1_full &lt;- full_join(cohort_1, cohort_groups) %&gt;% rename(Strain = Tx)
+
+c1 &lt;- c1_full %&gt;% select(TargetID, Day ,Trial ,path.length, strategy, Housing,
+Strain, total.time)
+
+# adding a column with a name of the strategy based on the website: https://rupertoverall.net/Rtrack/articles/Rtrack_strategy_description.html
+c1 &lt;- c1 %&gt;% mutate(strategy_name = case_when(strategy == 1 ~ &quot;thigmotaxis&quot;,
+strategy == 2 ~&quot;circling&quot;, strategy == 3 ~ &quot;random&quot;, strategy == 4 ~ &quot;scanning&quot;, 
+strategy == 5 ~ &quot;chaining&quot;, strategy == 6 ~ &quot;goal-directed search&quot;, 
+strategy == 7 ~ &quot;corrected search&quot;, strategy == 8 ~ &quot;direct path&quot;)) 
+
+# Cohort 2
+c2_full &lt;- full_join(cohort_2, cohort_groups) %&gt;% rename(Strain = Tx)
+
+c2 &lt;- c2_full %&gt;% select(TargetID, Day ,Trial ,path.length, strategy, Housing, Strain, total.time)
+
+# adding a column with a name of the strategy based on the website
+c2 &lt;- c2 %&gt;% mutate(strategy_name = case_when(strategy == 1 ~ &quot;thigmotaxis&quot;,
+strategy == 2 ~&quot;circling&quot;,strategy == 3 ~ &quot;random&quot;, strategy == 4 ~ &quot;scanning&quot;, 
+strategy == 5 ~ &quot;chaining&quot;, strategy == 6 ~ &quot;goal-directed search&quot;, 
+strategy == 7 ~ &quot;corrected search&quot;, strategy == 8 ~ &quot;direct path&quot;))
+
+# Total dataset
+
+total$TargetID &lt;- as.numeric(total$TargetID)
+total_full &lt;- full_join(total, cohort_groups) %&gt;% rename(Strain = Tx)
+total &lt;- total_full %&gt;% select(Cohort, Track_ID, TargetID, Day ,Trial, 
+path.length, strategy, Housing, Strain, total.time)
+
+# adding a column with a name of the strategy based on the website
+total &lt;- total %&gt;% mutate(strategy_name = case_when(strategy == 1 ~ &quot;thigmotaxis&quot;,
+strategy == 2 ~&quot;circling&quot;, strategy == 3 ~ &quot;random&quot;, strategy == 4 ~ &quot;scanning&quot;,
+strategy == 5 ~ &quot;chaining&quot;, strategy == 6 ~ &quot;goal-directed search&quot;, 
+strategy == 7 ~ &quot;corrected search&quot;, strategy == 8 ~ &quot;direct path&quot;))
+
+total &lt;- total %&gt;% unite(Cohort, Track_ID, col=&quot;unique&quot;,sep=&quot;_&quot;, remove = F) 
+total &lt;- total %&gt;% mutate(speed = path.length/total.time)
+
+total_united &lt;- total %&gt;% unite(Housing, Strain, col=&quot;Mice_group&quot;,sep=&quot; &quot;)
+
+glimpse(total_united)</code></pre>
+<pre><code>## Observations: 1,344
+## Variables: 12
+## $ unique        &lt;chr&gt; &quot;1_T01_M01&quot;, &quot;1_T01_M02&quot;, &quot;1_T01_M03&quot;, &quot;1_T01_M04&quot;, &quot;1_…
+## $ Cohort        &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+## $ Track_ID      &lt;chr&gt; &quot;T01_M01&quot;, &quot;T01_M02&quot;, &quot;T01_M03&quot;, &quot;T01_M04&quot;, &quot;T01_M05&quot;, …
+## $ TargetID      &lt;dbl&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, …
+## $ Day           &lt;chr&gt; &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, …
+## $ Trial         &lt;chr&gt; &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, …
+## $ path.length   &lt;dbl&gt; 2932.5564, 4280.1189, 3508.6255, 5031.2490, 5118.0600, …
+## $ strategy      &lt;dbl&gt; 1, 5, 5, 1, 3, 3, 7, 3, 5, 3, 4, 3, 4, 4, 3, 4, 3, 4, 1…
+## $ Mice_group    &lt;chr&gt; &quot;Normal Sham&quot;, &quot;Normal X-ray&quot;, &quot;Normal Sham&quot;, &quot;Normal X…
+## $ total.time    &lt;dbl&gt; 67.4051, 99.9600, 81.0047, 127.8053, 127.7500, 124.4103…
+## $ strategy_name &lt;chr&gt; &quot;thigmotaxis&quot;, &quot;chaining&quot;, &quot;chaining&quot;, &quot;thigmotaxis&quot;, &quot;…
+## $ speed         &lt;dbl&gt; 43.50645, 42.81832, 43.31385, 39.36651, 40.06309, 37.38…</code></pre>
+<pre class="r"><code>head(total_united)</code></pre>
+<pre><code>## # A tibble: 6 x 12
+##   unique Cohort Track_ID TargetID Day   Trial path.length strategy Mice_group
+##   &lt;chr&gt;   &lt;dbl&gt; &lt;chr&gt;       &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;       &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;     
+## 1 1_T01…      1 T01_M01         1 1     1           2933.        1 Normal Sh…
+## 2 1_T01…      1 T01_M02         2 1     1           4280.        5 Normal X-…
+## 3 1_T01…      1 T01_M03         3 1     1           3509.        5 Normal Sh…
+## 4 1_T01…      1 T01_M04         4 1     1           5031.        1 Normal X-…
+## 5 1_T01…      1 T01_M05         5 1     1           5118.        3 Normal Sh…
+## 6 1_T01…      1 T01_M06         6 1     1           4651.        3 Normal X-…
+## # … with 3 more variables: total.time &lt;dbl&gt;, strategy_name &lt;chr&gt;, speed &lt;dbl&gt;</code></pre>
+<p><em>I created a variable that shows a summary of mean path length from all three trials conducted on a particular day for each mouse. Its standard deviation (sd) and standard error of mean (sem) are also added. Based on this variable, I created another one that summarizes a mean of means from all mice within a particular mice group for each day. Its standard deviation (sd) and standard error of mean (sem) are also included.</em></p>
+<pre class="r"><code># Creates mean of all trials for each mouse grouped by day
+total_avg_per_day &lt;- total_united %&gt;% filter(Trial != 22) %&gt;% 
+group_by(Mice_group, TargetID, Day) %&gt;% summarise(mean_length = mean(path.length), 
+n=n(), sd=sd(path.length), sem=sd/sqrt(n)) %&gt;% arrange(Day) %&gt;% 
+select(Day, Mice_group, TargetID, mean_length, n, sd, sem)
+
+total_avg_per_day </code></pre>
+<pre><code>## # A tibble: 448 x 7
+## # Groups:   Mice_group, TargetID [64]
+##    Day   Mice_group    TargetID mean_length     n     sd    sem
+##    &lt;chr&gt; &lt;chr&gt;            &lt;dbl&gt;       &lt;dbl&gt; &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt;
+##  1 1     Enriched Sham        9       1857.     3  599.   346. 
+##  2 1     Enriched Sham       11       1416.     3  490.   283. 
+##  3 1     Enriched Sham       13       1790.     3 1370.   791. 
+##  4 1     Enriched Sham       15       2425.     3 2268.  1309. 
+##  5 1     Enriched Sham       25       1253.     3  804.   464. 
+##  6 1     Enriched Sham       27       3184.     3 2322.  1341. 
+##  7 1     Enriched Sham       29        876.     3  581.   336. 
+##  8 1     Enriched Sham       31       1637.     3 1267.   732. 
+##  9 1     Enriched Sham       41       2376.     3 1778.  1026. 
+## 10 1     Enriched Sham       43        409.     3   83.3   48.1
+## # … with 438 more rows</code></pre>
+<pre class="r"><code># Creates daily mean from the means of each mouse grouped by Mice_group
+total_day_avg &lt;- total_avg_per_day %&gt;% group_by(Mice_group, Day) %&gt;%
+summarise(day_mean_length_for_all = mean(mean_length), n = n(), 
+sd = sd(mean_length),sem=sd/sqrt(n)) %&gt;% select(Day, Mice_group, 
+day_mean_length_for_all, n, sd, sem) %&gt;% arrange(Day)
+
+total_day_avg</code></pre>
+<pre><code>## # A tibble: 28 x 6
+## # Groups:   Mice_group [4]
+##    Day   Mice_group     day_mean_length_for_all     n    sd   sem
+##    &lt;chr&gt; &lt;chr&gt;                            &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;
+##  1 1     Enriched Sham                    1773.    16  700. 175. 
+##  2 1     Enriched X-ray                   2089.    16  942. 235. 
+##  3 1     Normal Sham                      1967.    16  542. 136. 
+##  4 1     Normal X-ray                     1968.    16  756. 189. 
+##  5 2     Enriched Sham                     766.    16  350.  87.5
+##  6 2     Enriched X-ray                    623.    16  255.  63.7
+##  7 2     Normal Sham                       879.    16  484. 121. 
+##  8 2     Normal X-ray                      722.    16  246.  61.4
+##  9 3     Enriched Sham                    1997.    16 1020. 255. 
+## 10 3     Enriched X-ray                   1954.    16  889. 222. 
+## # … with 18 more rows</code></pre>
+<p><em>I’ve used this variable to create a plot of mean path length for each day grouped by mice group. First two days refer to the visible platform hence all groups achieved a similar result. When the platform was invisible, the mean path length between starting position and the goal decreased with time for all groups, indicating the mice learned the path to the platform. However, as can be seen on the graph, the mice in the group with enriched hosuing - Enriched Sham and Enriched X-ray - have learned the path to the goal sooner in comparison to the mice from the two other groups as indicated by shorter mean path length on a particular day. This suggests that it’s the housing condition that is decisive for learning in this experiment. The error bars show esepcially significant difference on the days 6 and 7</em></p>
+<pre class="r"><code>total_day_avg %&gt;% ggplot(aes(Day,day_mean_length_for_all, fill = Mice_group)) + geom_bar(stat=&quot;identity&quot;,position=&quot;dodge&quot;) + 
+geom_errorbar(aes(x = Day, y = day_mean_length_for_all, 
+ymin=day_mean_length_for_all - sem, ymax = day_mean_length_for_all + sem), 
+position = &quot;dodge&quot;) + labs(y=&quot;Mean path length (cm)&quot;, x = &quot;Days&quot;) + 
+ggtitle(&quot;Figure 1. Mean path length for each day based on mice group.&quot;) + 
+theme(plot.title = element_text(hjust = 0.1)) + 
+scale_x_discrete(limits=c(1,2,3,4,5,6,7)) + geom_vline(aes(xintercept=2.5), linetype=&quot;dashed&quot;)</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-5-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># The dashed line separates days with visible platform (1-2) from days with the invisible one.</code></pre>
+<p><em>In order to analyse this data in more details, I compared the same results as obtained above for trials with visible and invisible platform for each cohort separately. head() for cohort 1 data shown to present the output (see also two chunks above). I repeated the same for cohort 2. I consequently created 4 graphs, 2 per cohort. They present the same data, however, one is linear to illustrate clearly the trend, and the other one uses geom_bar, in order to illustrate clearly the significance of the results as indicated by the error bars. I obtained the same type of graph as the one above, however, I used the stat=“summary” instead of manually entering summary statistics. I compiled all the graphs into one figure. Cohort 1 is shown on the left side, cohort 2 is shown on the right side. Standard error of mean as the error bars.</em></p>
+<pre class="r"><code># Cohort 1
+
+# Unite housing and x-ray treatment into one categorical variable
+c1_united &lt;- c1 %&gt;% unite(Housing, Strain, col=&quot;Mice_group&quot;,sep=&quot; &quot;)
+
+# Creates mean of all trials for each mouse grouped by day
+# Trial 22 excluded as it was a pilot trial (trial 
+# made in order to establish the parameters for the whole experiment)
+c1_ID_avg_per_day &lt;- c1_united %&gt;% filter(Trial != 22) %&gt;% 
+group_by(Mice_group, TargetID, Day) %&gt;% summarise(mean_length = 
+mean(path.length), n=n(), sd=sd(path.length), sem=sd/sqrt(n)) %&gt;% 
+arrange(Day) %&gt;% select(TargetID, Day, Mice_group, mean_length, n, sd, sem)
+head(c1_ID_avg_per_day)</code></pre>
+<pre><code>## # A tibble: 6 x 7
+## # Groups:   Mice_group, TargetID [6]
+##   TargetID Day   Mice_group    mean_length     n    sd   sem
+##      &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;               &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1        9 3     Enriched Sham        861.     3  817.  472.
+## 2       11 3     Enriched Sham        580.     3  392.  227.
+## 3       13 3     Enriched Sham       2835.     3 1924. 1111.
+## 4       15 3     Enriched Sham       2115.     3 2050. 1184.
+## 5       25 3     Enriched Sham       1012.     3 1075.  621.
+## 6       27 3     Enriched Sham       1279.     3  919.  530.</code></pre>
+<pre class="r"><code># Creates daily mean from the means of each mouse grouped by Mice_group
+c1_day_avg &lt;- c1_ID_avg_per_day %&gt;% group_by(Mice_group,Day) %&gt;% 
+summarise(day_mean_length_for_all = mean(mean_length), n = n(), sd = 
+sd(mean_length),sem=sd/sqrt(n)) %&gt;% select(Day, Mice_group, 
+day_mean_length_for_all, n, sd, sem) %&gt;% arrange(Day)
+
+head(c1_day_avg)</code></pre>
+<pre><code>## # A tibble: 6 x 6
+## # Groups:   Mice_group [4]
+##   Day   Mice_group     day_mean_length_for_all     n    sd   sem
+##   &lt;chr&gt; &lt;chr&gt;                            &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1 3     Enriched Sham                    1619.     8  814.  288.
+## 2 3     Enriched X-ray                   1795.     8  905.  320.
+## 3 3     Normal Sham                      2426.     8  640.  226.
+## 4 3     Normal X-ray                     2480.     8  733.  259.
+## 5 4     Enriched Sham                    1392.     8  878.  311.
+## 6 4     Enriched X-ray                   1379.     8 1183.  418.</code></pre>
+<pre class="r"><code>c1_day_avg &lt;- c1_day_avg %&gt;% mutate(Day= as.numeric(Day))
+
+g1 &lt;- c1_day_avg %&gt;% ggplot(aes(Day,day_mean_length_for_all)) + 
+geom_line(stat=&quot;identity&quot;, aes(color = Mice_group)) + 
+geom_errorbar(aes(x = Day, y = day_mean_length_for_all, 
+ymin=day_mean_length_for_all - sem, ymax = day_mean_length_for_all + sem), 
+width = 0.5) + labs(y=&quot;Mean path length (cm)&quot;, x = &quot;Days&quot;) + 
+ggtitle(&quot;Cohort 1&quot;) + theme(plot.title = element_text(hjust = 0.5))
+
+g2 &lt;- c1_united %&gt;% filter(Trial != 22) %&gt;% group_by(Mice_group, 
+TargetID, Day) %&gt;% summarise(mean_length = mean(path.length), n=n(), 
+sd=sd(path.length), sem=sd/sqrt(n)) %&gt;% ggplot() + geom_bar(aes(x = Day, 
+y=mean_length, fill = Mice_group), stat=&quot;summary&quot;, fun.y=&quot;mean&quot;, 
+position =&quot;dodge&quot;) + geom_errorbar(aes(x = Day, y=mean_length, fill = Mice_group), 
+stat=&quot;summary&quot;, position=&quot;dodge&quot;) + labs(y=&quot;Mean path length (cm)&quot;, x = &quot;Days&quot;)</code></pre>
+<pre><code>## Warning: Ignoring unknown parameters: fun.y</code></pre>
+<pre><code>## Warning: Ignoring unknown aesthetics: fill</code></pre>
+<pre class="r"><code># Cohort 2
+
+# Unite housing and x-ray treatment into one categorical variable
+c2_united &lt;- c2 %&gt;% unite(Housing, Strain, col=&quot;Mice_group&quot;,sep=&quot; &quot;)
+# c1_united %&gt;% select(Mice_group, TargetID, Day, path.length, total.time)
+
+# Creates mean of all trials for each mouse grouped by day
+c2_ID_avg_per_day &lt;- c2_united %&gt;% filter(Trial != 22) %&gt;%
+group_by(Mice_group, TargetID, Day) %&gt;% summarise(mean_length = 
+mean(path.length), n=n(), sd=sd(path.length), sem=sd/sqrt(n)) %&gt;%
+arrange(Day) %&gt;% select(TargetID, Day, Mice_group, mean_length, n, sd, sem)
+
+# Creates daily mean from the means of each mouse grouped by Mice_group
+c2_day_avg &lt;- c2_ID_avg_per_day %&gt;% group_by(Mice_group,Day) %&gt;%
+summarise(day_mean_length_for_all = mean(mean_length), n = n(), 
+sd = sd(mean_length),sem=sd/sqrt(n)) %&gt;% select(Day, Mice_group, 
+day_mean_length_for_all, n, sd, sem) %&gt;% arrange(Day)
+
+c2_day_avg &lt;- c2_day_avg %&gt;% mutate(Day= as.numeric(Day))
+
+g3 &lt;- c2_day_avg %&gt;% ggplot(aes(Day,day_mean_length_for_all)) + 
+geom_line(stat=&quot;identity&quot;, aes(color = Mice_group)) + geom_errorbar(aes(x = Day, 
+y = day_mean_length_for_all, ymin=day_mean_length_for_all - sem, 
+ymax = day_mean_length_for_all + sem), width = 0.5) + 
+labs(y=&quot;Mean path length (cm)&quot;, x = &quot;Days&quot;) + ggtitle(&quot;Cohort 2&quot;) + 
+theme(plot.title = element_text(hjust = 0.5))
+
+g4 &lt;- c2_united %&gt;% filter(Trial != 22) %&gt;% group_by(Mice_group, TargetID, Day) %&gt;% summarise(mean_length = mean(path.length), n=n(), sd=sd(path.length),                                   sem=sd/sqrt(n)) %&gt;% ggplot() + geom_bar(aes(x = Day, y=mean_length, fill = Mice_group),
+stat=&quot;summary&quot;, fun.y=&quot;mean&quot;, position =&quot;dodge&quot;) + 
+geom_errorbar(aes(x = Day, y=mean_length, fill = Mice_group), 
+stat=&quot;summary&quot;, position=&quot;dodge&quot;) + labs(y=&quot;Mean path length (cm)&quot;, x = &quot;Days&quot;)</code></pre>
+<pre><code>## Warning: Ignoring unknown parameters: fun.y
+
+## Warning: Ignoring unknown aesthetics: fill</code></pre>
+<pre class="r"><code>grid.arrange(g1, g3, g2, g4, nrow = 2, ncol = 2)</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-6-1.png" width="768" style="display: block; margin: auto;" /></p>
+<p><em>In both cohorts, the mean path length from the start position to the goal becomes shorter with each day, indicating the mice acquire spatial memory of the goal within a pool. The decrease is more visible in the Cohort 2. The sudden increase after the day 4 in the Normal X-ray group in the Cohort 1 is potentially due to individual differences in the mice used in the experiment. The steepest decrease in the mean path length for Enriched X-Ray group in both cohorts shows fast learning in this relatively to other groups, despite the block of neurogenesis through X-ray. Hence, neurogenesis does not seem to have a huge impact on spetial memory.</em></p>
+<p><em>Subsequently, I analysed strategies used by mice. I counted each strategy during each day and expressed it as a proportion out of 192 (2 cohorts x 32 mice x 3 trials/day). Then, I grouped the results by mice group and presented the graph for each group (4 in total) in one figure.</em></p>
+<pre class="r"><code>strategy_count &lt;- total %&gt;% group_by(Day, strategy_name) %&gt;% count()
+strategy_count &lt;- strategy_count %&gt;% mutate(proportion = n/192)
+
+head(strategy_count)</code></pre>
+<pre><code>## # A tibble: 6 x 4
+## # Groups:   Day, strategy_name [6]
+##   Day   strategy_name            n proportion
+##   &lt;chr&gt; &lt;chr&gt;                &lt;int&gt;      &lt;dbl&gt;
+## 1 1     chaining                20    0.104  
+## 2 1     circling                 1    0.00521
+## 3 1     corrected search        17    0.0885 
+## 4 1     goal-directed search    58    0.302  
+## 5 1     random                  42    0.219  
+## 6 1     scanning                39    0.203</code></pre>
+<pre class="r"><code>ggplot(strategy_count, aes(x = Day, y = proportion, fill= strategy_name))+
+geom_bar(stat=&quot;identity&quot;) + geom_vline(aes(xintercept=2.5), linetype=&quot;dashed&quot;) + 
+ggtitle(&quot;Figure 3. Proportion of goal searching strategies for each day.&quot;)</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-7-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>strategy_counts &lt;- total_united %&gt;% group_by(Mice_group, Day, strategy_name) %&gt;%
+count() %&gt;% mutate(proportion = n/192)
+head(strategy_counts)</code></pre>
+<pre><code>## # A tibble: 6 x 5
+## # Groups:   Mice_group, Day, strategy_name [6]
+##   Mice_group    Day   strategy_name            n proportion
+##   &lt;chr&gt;         &lt;chr&gt; &lt;chr&gt;                &lt;int&gt;      &lt;dbl&gt;
+## 1 Enriched Sham 1     chaining                 5     0.0260
+## 2 Enriched Sham 1     corrected search         5     0.0260
+## 3 Enriched Sham 1     goal-directed search    11     0.0573
+## 4 Enriched Sham 1     random                  13     0.0677
+## 5 Enriched Sham 1     scanning                11     0.0573
+## 6 Enriched Sham 1     thigmotaxis              3     0.0156</code></pre>
+<pre class="r"><code>ggplot(strategy_counts, aes(x = Day, y = proportion, fill= strategy_name))+
+geom_bar(stat=&quot;identity&quot;) + geom_vline(aes(xintercept=2.5), linetype=&quot;dashed&quot;) + 
+facet_wrap(~Mice_group) + 
+ggtitle(&quot;Figure 4. Goal searching strategies for each hosuing-strain group.&quot;)</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-7-2.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># The dashed line separates days with visible platform (1-2) from days 
+# with the invisible one.</code></pre>
+<p><em>The most dominant strategy during the test days with a visible platform, according to the Figure 3, is “goal-directed search”. This is consistent with the hypothesis that when the goal is visible, most mice can reach it directly. Thigmotaxis means circling of a mouse along the edge of a pool. It can indicate mouse’s anxiety and/or inability to find the platform. The figure 4 shows that the proportion of thigmotaxis is zero during trials with invisible platform for groups with an enriched housing as opposed to normal housing. The proportion of the corrected search as well as goal-directed search increases more in enriched hosuing groups in comparison to normal housing groups. Moreover, there is a proportion of random path in groups with normal hosuing but almost none in enriched hosuing groups. This supports the evidence that housing is the crucial factor for spatial learning in this study. Nevertheless, the proportion of scanning is dominant and similar among all groups showing that the trial/error strategy is most prelevant in the MWM test in these experiments.</em></p>
+<p><em>TrackID is unique for each mouse and trial within one cohort - M stands for a mouse’s ID and T for the trial’s number - but it’s duplicated in the other cohort. I used pivot_wider to create a variable with mean path length for each mouse (TrackID), however, I separated it into two columns - for cohort 1 and cohort 2. I repeated the procedure in order to create a variable with mean total time for each cohort. Then I fully joined both variables, thereby creating a dataset enabling direct comparison of each equivalent trial in both cohorts. The glimpse of the output shown. Then I used summarise to calculate the mean lenth and mean total time based on mice group for each day. I used this data to create a correlation matrix for numeric variables.</em></p>
+<pre class="r"><code>trial &lt;- total_full %&gt;% select(Cohort, Track_ID, TargetID, Day ,Trial, 
+path.length, strategy, Housing, Strain, total.time) %&gt;%
+unite(Housing, Strain, col=&quot;Mice_group&quot;,sep=&quot; &quot;) %&gt;% 
+group_by(Cohort,Mice_group, Day, Track_ID) %&gt;%
+summarise(mean_length = mean(path.length)) %&gt;% pivot_wider(names_from=&quot;Cohort&quot;, values_from=&quot;mean_length&quot;) %&gt;% rename(&quot;coh1_length&quot; = &quot;1&quot;, &quot;coh2_length&quot; = &quot;2&quot;)
+head(trial)</code></pre>
+<pre><code>## # A tibble: 6 x 5
+## # Groups:   Mice_group, Day [1]
+##   Mice_group    Day   Track_ID coh1_length coh2_length
+##   &lt;chr&gt;         &lt;chr&gt; &lt;chr&gt;          &lt;dbl&gt;       &lt;dbl&gt;
+## 1 Enriched Sham 1     T01_M09        1305.       2426.
+## 2 Enriched Sham 1     T01_M11        1426.        314.
+## 3 Enriched Sham 1     T01_M13        1468.       5102.
+## 4 Enriched Sham 1     T01_M15        4728.        497.
+## 5 Enriched Sham 1     T01_M25        2092.       4955.
+## 6 Enriched Sham 1     T01_M27        5306.       5220.</code></pre>
+<pre class="r"><code>trial2 &lt;- total_full %&gt;% select(Cohort, Track_ID, TargetID, Day ,Trial, 
+path.length, strategy, Housing, Strain, total.time) %&gt;%
+unite(Housing, Strain, col=&quot;Mice_group&quot;,sep=&quot; &quot;) %&gt;% 
+group_by(Cohort, Track_ID, Mice_group, Day) %&gt;%
+summarise(mean_time = mean(total.time)) %&gt;%
+pivot_wider(names_from=&quot;Cohort&quot;, values_from=&quot;mean_time&quot;) %&gt;%
+rename(&quot;coh1_time&quot; = &quot;1&quot;, &quot;coh2_time&quot; = &quot;2&quot;)
+head(trial2)</code></pre>
+<pre><code>## # A tibble: 6 x 5
+## # Groups:   Track_ID, Mice_group [6]
+##   Track_ID Mice_group   Day   coh1_time coh2_time
+##   &lt;chr&gt;    &lt;chr&gt;        &lt;chr&gt;     &lt;dbl&gt;     &lt;dbl&gt;
+## 1 T01_M01  Normal Sham  1          67.4     127. 
+## 2 T01_M02  Normal X-ray 1         100.       13.7
+## 3 T01_M03  Normal Sham  1          81.0      92.1
+## 4 T01_M04  Normal X-ray 1         128.       52.7
+## 5 T01_M05  Normal Sham  1         128.      128. 
+## 6 T01_M06  Normal X-ray 1         124.      102.</code></pre>
+<pre class="r"><code>cohorts_comparison &lt;- full_join(trial, trial2)
+
+head(cohorts_comparison)</code></pre>
+<pre><code>## # A tibble: 6 x 7
+## # Groups:   Mice_group, Day [1]
+##   Mice_group    Day   Track_ID coh1_length coh2_length coh1_time coh2_time
+##   &lt;chr&gt;         &lt;chr&gt; &lt;chr&gt;          &lt;dbl&gt;       &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;
+## 1 Enriched Sham 1     T01_M09        1305.       2426.      26.8     58.6 
+## 2 Enriched Sham 1     T01_M11        1426.        314.      37.7      6.54
+## 3 Enriched Sham 1     T01_M13        1468.       5102.      34.1    128.  
+## 4 Enriched Sham 1     T01_M15        4728.        497.     124.      13.4 
+## 5 Enriched Sham 1     T01_M25        2092.       4955.      47.5    127.  
+## 6 Enriched Sham 1     T01_M27        5306.       5220.     127.     128.</code></pre>
+<pre class="r"><code>glimpse(cohorts_comparison) </code></pre>
+<pre><code>## Observations: 672
+## Variables: 7
+## Groups: Mice_group, Day [28]
+## $ Mice_group  &lt;chr&gt; &quot;Enriched Sham&quot;, &quot;Enriched Sham&quot;, &quot;Enriched Sham&quot;, &quot;Enric…
+## $ Day         &lt;chr&gt; &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1&quot;, &quot;1…
+## $ Track_ID    &lt;chr&gt; &quot;T01_M09&quot;, &quot;T01_M11&quot;, &quot;T01_M13&quot;, &quot;T01_M15&quot;, &quot;T01_M25&quot;, &quot;T…
+## $ coh1_length &lt;dbl&gt; 1304.8971, 1425.8144, 1468.4310, 4728.2244, 2091.7767, 53…
+## $ coh2_length &lt;dbl&gt; 2426.3465, 314.3933, 5102.1718, 496.7250, 4954.7052, 5220…
+## $ coh1_time   &lt;dbl&gt; 26.7883, 37.7279, 34.1012, 123.9098, 47.4663, 127.3650, 3…
+## $ coh2_time   &lt;dbl&gt; 58.6299, 6.5450, 127.9152, 13.3658, 127.4203, 127.5302, 6…</code></pre>
+<pre class="r"><code># 672 observations = 21 trials * 32 mice per cohort
+
+cohorts_comparison_summary &lt;- cohorts_comparison %&gt;%
+group_by(Mice_group, Day) %&gt;% summarise(coh1_mean_length = mean(coh1_length), 
+coh2_mean_length = mean(coh2_length), coh1_mean_time = mean(coh1_time), coh2_mean_time = mean(coh2_time)) 
+
+head(cohorts_comparison_summary)</code></pre>
+<pre><code>## # A tibble: 6 x 6
+## # Groups:   Mice_group [1]
+##   Mice_group Day   coh1_mean_length coh2_mean_length coh1_mean_time
+##   &lt;chr&gt;      &lt;chr&gt;            &lt;dbl&gt;            &lt;dbl&gt;          &lt;dbl&gt;
+## 1 Enriched … 1                1805.            1742.           45.5
+## 2 Enriched … 2                 694.             839.           17.4
+## 3 Enriched … 3                1619.            2374.           39.6
+## 4 Enriched … 4                1392.            1580.           36.6
+## 5 Enriched … 5                1136.            1497.           30.6
+## 6 Enriched … 6                 990.             786.           27.4
+## # … with 1 more variable: coh2_mean_time &lt;dbl&gt;</code></pre>
+<pre class="r"><code>coh_nums &lt;- cohorts_comparison_summary %&gt;% select_if(is.numeric) %&gt;%
+as.data.frame() %&gt;% select(-1)
+cor(coh_nums)</code></pre>
+<pre><code>##                  coh1_mean_length coh2_mean_length coh1_mean_time
+## coh1_mean_length        1.0000000        0.8145854      0.9828600
+## coh2_mean_length        0.8145854        1.0000000      0.7633481
+## coh1_mean_time          0.9828600        0.7633481      1.0000000
+## coh2_mean_time          0.8133976        0.9886520      0.7860142
+##                  coh2_mean_time
+## coh1_mean_length      0.8133976
+## coh2_mean_length      0.9886520
+## coh1_mean_time        0.7860142
+## coh2_mean_time        1.0000000</code></pre>
+<p><em>The correlation matrix shows that mean path length is highly correlated with the mean total time in both cohorts, therefore, one is an almost perfect predictor of the other (correlation of ~0.99). This makes sense as the shorter the path to the goal, the less time it takes to reach it. This matrix also shows a strong correlation of mean path length between both cohorts as well as a strong correlation of mean total time between both cohorts, which means the cohort 2 succesfully replicated data of the cohort 1, which was the goal.</em></p>
+<p><em>An additional visualisation of the correlations using correlation heatmap for total time and path length as above + goal searching strategy used and speed variable added. There is a negative correlation between path length/time and strategy, which reflects a correlation between the longer path/more time to reach the goal and thigmotaxis or trial/error strategies (as they score lower in the index variable called “strategy”). Alternatively, high scoring strategies, like corrected search, positively correate with short path length/total time.</em></p>
+<pre class="r"><code>total %&gt;%select_if(is.numeric) %&gt;% select(-1, -2) %&gt;% cor %&gt;%
+as.data.frame %&gt;% rownames_to_column %&gt;% pivot_longer(-1) %&gt;%
+ggplot(aes(rowname, name, fill=value))+geom_tile()+
+geom_text(aes(label=round(value,2)))+xlab(&quot;&quot;)+ylab(&quot;&quot;)</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-9-1.png" width="768" style="display: block; margin: auto;" /></p>
+<p><em>Lastly, I performed cluster analysis, however, I need to admit that my data is not perfect for this purpose. I excluded trials from the day 1 and 2 to leave only the actual trials with an invisible platform. Pilot trial 22 was also excluded. I decided to include the absolute turning value of mice and velocity, both calculated using Rtrack package. I used summarise to calculate the mean of path length, total time, turning value and velocity. I saved the variable as a data frame and run thorugh a loop in order to determine an optimal number of clusters for PAM analysis. I visualised the correlations using the suggested number of clusters, which is 3. As predcited, the path length and time are highly positively correlated and at the same time they are strongly negatively correlated with strategies. Turning is positively correlated with strategies, which is suprising as more turns would be expected to predict a longer and more random path. The explanation requires further investigation of how this variable is created within the Rtrack package. Although the suggested number of clusters was 3, ultimately I decided to use just two as they accounted for 94.5% of the data and still had a reasonable structure according to Average Silhouette Width value, which is 0.65.</em></p>
+<pre class="r"><code>library(tidyverse)
+library(cluster)
+
+total_full_united &lt;- total_full %&gt;% unite(Housing, Strain,
+col=&quot;Mice_group&quot;,sep=&quot; &quot;)
+total_full_united &lt;- total_full_united %&gt;%
+mutate(speed = path.length/total.time)
+
+tot &lt;- total_full_united %&gt;% filter(Trial != 22, Day !=1, Day != 2) %&gt;%
+group_by(Mice_group, TargetID, Day, strategy) %&gt;%
+summarise(mean_length = mean(path.length), mean_time = mean(total.time),
+turn = mean(turning.absolute), velocity = mean(mean.velocity))
+head(tot)</code></pre>
+<pre><code>## # A tibble: 6 x 8
+## # Groups:   Mice_group, TargetID, Day [4]
+##   Mice_group    TargetID Day   strategy mean_length mean_time  turn velocity
+##   &lt;chr&gt;            &lt;dbl&gt; &lt;chr&gt;    &lt;dbl&gt;       &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;
+## 1 Enriched Sham        9 3            4       1803.     43.1   1.07     41.9
+## 2 Enriched Sham        9 3            6        389.      9.54  1.13     41.5
+## 3 Enriched Sham        9 4            4       3072.     83.1   1.07     33.3
+## 4 Enriched Sham        9 4            6        321.      7.37  1.39     43.5
+## 5 Enriched Sham        9 5            4       2630.     73.3   1.11     33.7
+## 6 Enriched Sham        9 6            4       1725.     49.3   1.22     35.2</code></pre>
+<pre class="r"><code>tot2 &lt;- tot %&gt;% group_by(Mice_group, Day,strategy) %&gt;%
+summarise(day_mean_length_for_all = mean(mean_length),
+day_mean_time_for_all = mean(mean_time), mean_turn = mean(turn),
+mean_velocity = mean(velocity)) %&gt;% arrange(Day)
+
+tot3 &lt;- tot2 %&gt;% as.data.frame() %&gt;% select(-1,-2)
+tot4 &lt;- tot2 %&gt;% as.data.frame()
+glimpse(tot3)</code></pre>
+<pre><code>## Observations: 99
+## Variables: 5
+## $ strategy                &lt;dbl&gt; 4, 5, 6, 7, 3, 4, 5, 6, 7, 1, 3, 4, 5, 6, 7, …
+## $ day_mean_length_for_all &lt;dbl&gt; 2654.1612, 1194.3134, 512.3580, 182.0533, 481…
+## $ day_mean_time_for_all   &lt;dbl&gt; 67.424233, 30.772000, 12.889567, 5.646900, 12…
+## $ mean_turn               &lt;dbl&gt; 1.189948, 1.141221, 1.328929, 1.855985, 1.112…
+## $ mean_velocity           &lt;dbl&gt; 38.05913, 38.97079, 41.06603, 31.90538, 31.47…</code></pre>
+<pre class="r"><code>X &lt;- tot3 %&gt;% select(1:5) %&gt;% scale
+head(round(X,3))</code></pre>
+<pre><code>##      strategy day_mean_length_for_all day_mean_time_for_all mean_turn
+## [1,]   -0.415                   0.912                 0.785    -0.675
+## [2,]    0.140                  -0.300                -0.356    -0.839
+## [3,]    0.695                  -0.866                -0.913    -0.209
+## [4,]    1.249                  -1.141                -1.138     1.561
+## [5,]   -0.969                   2.704                 2.649    -0.937
+## [6,]   -0.415                   0.812                 0.692    -0.713
+##      mean_velocity
+## [1,]         0.754
+## [2,]         1.018
+## [3,]         1.624
+## [4,]        -1.028
+## [5,]        -1.152
+## [6,]         0.908</code></pre>
+<pre class="r"><code># checking number of clusters
+
+grouping &lt;- vector()
+for(i in 2:10){
+  pam_fit &lt;- tot3 %&gt;% pam(i)
+  grouping[i] &lt;- pam_fit$silinfo$avg.width
+} 
+ggplot()+geom_line(aes(x=1:10,y=grouping))+
+scale_x_continuous(name=&quot;k&quot;,breaks=1:10)</code></pre>
+<pre><code>## Warning: Removed 1 row(s) containing missing values (geom_path).</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-10-1.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># run pam for 3
+pam3 &lt;- tot3 %&gt;% select(-1,-2) %&gt;% pam(k=3)
+pam3</code></pre>
+<pre><code>## Medoids:
+##      ID day_mean_time_for_all mean_turn mean_velocity
+## [1,] 90              55.28526  1.290535      36.19713
+## [2,] 20              14.86160  1.458729      35.44875
+## [3,] 40              95.23500  1.171238      34.95187
+## Clustering vector:
+##  [1] 1 2 2 2 3 1 1 2 2 1 3 3 1 2 2 2 3 1 1 2 2 1 1 2 2 1 2 2 3 1 1 1 2 2 3 1 1 2
+## [39] 2 3 1 1 2 2 1 2 2 1 1 1 3 2 2 1 1 3 1 3 2 2 1 2 2 2 1 2 2 1 1 1 1 2 2 1 3 1
+## [77] 3 2 2 1 2 2 2 1 2 2 2 2 3 1 1 2 2 1 1 1 3 2 2
+## Objective function:
+##     build      swap 
+## 10.862704  9.098197 
+## 
+## Available components:
+##  [1] &quot;medoids&quot;    &quot;id.med&quot;     &quot;clustering&quot; &quot;objective&quot;  &quot;isolation&quot; 
+##  [6] &quot;clusinfo&quot;   &quot;silinfo&quot;    &quot;diss&quot;       &quot;call&quot;       &quot;data&quot;</code></pre>
+<pre class="r"><code>plot(pam3, which=2)</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-10-2.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot(pam3, which=1)</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-10-3.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># visualise correlations
+tot3 %&gt;% mutate(cluster=as.factor(pam3$clustering)) %&gt;%
+ggpairs(columns = 1:5, aes(color=cluster))</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-10-4.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># maybe 2 clusters better
+
+# compare to two 
+pam2 &lt;- tot3 %&gt;% select(-1,-2) %&gt;% pam(k=2)
+pam2</code></pre>
+<pre><code>## Medoids:
+##      ID day_mean_time_for_all mean_turn mean_velocity
+## [1,] 22              58.93571  1.208019      36.29908
+## [2,] 20              14.86160  1.458729      35.44875
+## Clustering vector:
+##  [1] 1 2 2 2 1 1 1 2 2 1 1 1 1 2 2 2 1 1 1 2 2 1 1 2 2 1 2 2 1 1 1 1 2 2 1 1 1 2
+## [39] 2 1 1 1 2 2 1 2 2 1 1 1 1 2 2 1 1 1 1 1 2 2 1 2 2 2 2 2 2 1 1 1 1 2 2 1 1 1
+## [77] 1 2 2 1 2 2 2 1 2 2 2 2 1 1 1 2 2 1 1 1 1 2 2
+## Objective function:
+##    build     swap 
+## 18.94824 12.84267 
+## 
+## Available components:
+##  [1] &quot;medoids&quot;    &quot;id.med&quot;     &quot;clustering&quot; &quot;objective&quot;  &quot;isolation&quot; 
+##  [6] &quot;clusinfo&quot;   &quot;silinfo&quot;    &quot;diss&quot;       &quot;call&quot;       &quot;data&quot;</code></pre>
+<pre class="r"><code>plot(pam2, which=2)</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-10-5.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot(pam2, which=1)</code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-10-6.png" width="768" style="display: block; margin: auto;" /></p>
+<pre class="r"><code># The choice of 2 clusters
+
+tot5 &lt;- tot4 %&gt;% mutate(cluster=as.factor(pam2$clustering)) %&gt;%
+select(Mice_group, cluster, everything())
+#tot4
+tot5$strategy &lt;- as.factor(tot5$strategy)
+
+ggplot(tot5, aes(x=day_mean_length_for_all,y=mean_turn, 
+color=strategy, shape = cluster)) + geom_point() +
+labs(title=&quot;PAM visualisation&quot;, y=&quot;Mean Velocity&quot;, x=&quot;Mean Path Length (cm)&quot;) + scale_color_manual(name=&quot;Strategy&quot;, labels = c(&quot;thigmotaxis&quot;,&quot;circling&quot;,
+&quot;random&quot;,&quot;scanning&quot;, &quot;chaining&quot;, &quot;goal-directed search&quot;, &quot;corrected search&quot;,
+&quot;direct path&quot;), values = c(&quot;1&quot;=&quot;blue&quot;, &quot;2&quot;=&quot;#00BA38&quot;, &quot;3&quot;=&quot;purple&quot;,
+&quot;4&quot;=&quot;#00BCD8&quot;, &quot;5&quot;=&quot;brown&quot;, &quot;6&quot;=&quot;orange&quot;, &quot;7&quot; = &quot;#FF67A4&quot;)) + geom_vline(aes(xintercept=1500), linetype=&quot;dashed&quot;)                                        </code></pre>
+<p><img src="/project1_files/figure-html/unnamed-chunk-10-7.png" width="768" style="display: block; margin: auto;" /></p>
+<p><em>A 2D graph of PAM analysis with clusters presented as shapes and strategies as colors. The dashed line clearly separates the two clusters. It divides the mean path length at around 1500cm. It’s worth mentioning that all mean turn values above 1.5 are on the left side of this line and that the turning values for all data points on the right side of the line are significantly less widespread. Although more data is required to reach a valid conclusion, the classification into one of these two clusters could for example be used to determine whether a particular mouse has already acquired spatial memory of the goal in the pool or if it is still learning, which would be really useful for both quantitative and behavioral analysis.</em></p>
+<p><strong>To conclude, my analysis is in line with the data published in the paper (Meshi et al., 2006), making the Rtrack package a very promising tool for an analysis of Mice Water Maze data.</strong></p>
+
+              <hr>
+              <div class="related-posts">
+                <h5>Related Posts</h5>
+                
+              </div>
+            </div>
+          </div>
+          <hr>
+        <div class="disqus">
+  <div id="disqus_thread"></div>
+  <script type="text/javascript">
+
+    (function() {
+      
+      
+      if (window.location.hostname == "localhost")
+        return;
+
+      var disqus_shortname = '';
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  <a href="http://disqus.com/" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+        </div>
+      </div>
+      
+    </div>
+
+    
+    <footer>
+  <div id="footer">
+    <div class="container">
+      <p class="text-muted">&copy; All rights reserved. Powered by <a href="https://gohugo.io/">Hugo</a> and
+      <a href="http://www.github.com/nurlansu/hugo-sustain/">sustain</a> with ♥</p>
+    </div>
+  </div>
+</footer>
+<div class="footer"></div>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="/js/docs.min.js"></script>
+<script src="/js/main.js"></script>
+
+<script src="/js/ie10-viewport-bug-workaround.js"></script>
+
+
+    
+  </body>
+</html>

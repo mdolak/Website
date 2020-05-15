@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Maria Dolak" />
+    <meta name="description" content="Describe your website">
+    <link rel="shortcut icon" type="image/x-icon" href="/img/favicon.ico">
+    <title>Game</title>
+    <meta name="generator" content="Hugo 0.70.0" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="/css/main.css" />
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,400,200bold,400old" />
+    
+    <!--[if lt IE 9]>
+			<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+			<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+		<![endif]-->
+
+    
+  </head>
+
+  <body>
+    <div id="wrap">
+
+      
+      <nav class="navbar navbar-default">
+  <div class="container">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="/"><i class="fa fa-home"></i></a>
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <div class="navbar-collapse collapse" id="navbar">
+      <ul class="nav navbar-nav navbar-right">
+      
+        
+        <li><a href="/blog/">BLOG</a></li>
+        
+        <li><a href="/papers">PAPERS</a></li>
+        
+        <li><a href="/projects">PROJECTS</a></li>
+        
+        <li><a href="/resume.pdf">RESUME</a></li>
+        
+      
+      </ul>
+    </div>
+  </div>
+</nav>
+
+      
+      <div class="container">
+        <div class="blog-post">
+          <h3>
+            <strong><a href="/project3/">Game</a></strong>
+          </h3>
+        </div>
+        <div class="blog-title">
+          <h4>
+          January 1, 0001
+            &nbsp;&nbsp;
+            
+          </h4>
+        </div>
+        <div class="panel panel-default">
+          <div class="panel-body">
+            <div class="blogpost">
+              
+
+
+<pre class="r"><code>library(reticulate)</code></pre>
+<pre python.reticulate="FALSE"><code>
+#  File: Project2.py
+#  Description: This program uses object-oriented techniques to create
+#  a simple map for an adventure game, similar to &quot;Colossal Cave&quot;, with rooms
+#  given in a txt file. It uses command-line interpreter as an interactive
+#  user interface.
+#  Student&#39;s Name: Maria Dolak
+#  Course Name: CS 303E 
+#
+#  Date Created: 05/05/2020
+#  Date Last Modified: 07/05/2020
+
+
+# Create a class Room.
+class Room:
+
+    # Define an object  with the following attributes: name, rooms to the
+    # north, east, south west, up and down and the contents of the room.
+    
+    def __init__(self,name,north,east,south,west,up,down,contents):
+        self.name = name 
+        self.north = north 
+        self.east = east 
+        self.south = south
+        self.west = west
+        self.up = up
+        self.down = down
+        self.contents = contents
+
+###############################################################################
+# The following method and function are not meant to be used in the game.
+
+    # Define a method that displays a name of the room and all possible
+    # rooms with which it is connected.
+    
+    def displayRoom(self):
+            
+        print(&quot;Room name: &quot;,self.name)
+
+        if self.north != None:
+            print(format(&quot;   Room to the north: &quot;,&quot;22s&quot;),self.north)
+        if self.east != None:
+            print(format(&quot;   Room to the east: &quot;, &quot;22s&quot;),self.east)
+        if self.south != None:
+            print(format(&quot;   Room to the south: &quot;, &quot;22s&quot;), self.south)
+        if self.west != None:
+            print(format(&quot;   Room to the west: &quot;, &quot;22s&quot;), self.west)
+        if self.up != None:
+            print(format(&quot;   Room above: &quot;,&quot;22s&quot;), self.up)
+        if self.down != None:
+            print(format(&quot;   Room below: &quot;, &quot;22s&quot;), self.down)
+        if self.contents == None:
+            print(format(&quot;   Room contents: &quot;, &quot;22s&quot;), [])
+        if self.contents != None:
+            print(format(&quot;   Room contents: &quot;, &quot;22s&quot;), self.contents)
+
+# Define a function that displays all the rooms with all of the rooms
+# they are connected to.
+    
+def displayAllRooms():
+            
+    for i in floorPlan:
+        i.displayRoom()
+        print()
+
+###############################################################################
+
+
+# Define a function that creates a new Room object with properties defined
+# in a list given as roomData. Return the new object.
+
+def createRoom(roomData):
+
+        newRoom = Room(roomData[0],roomData[1],roomData[2],roomData[3],
+                       roomData[4],roomData[5], roomData[6], roomData[7])
+        return newRoom
+
+# Define a function that displays a name of a room in which an user
+# is currently in and the contents of the room.
+
+def look():
+    print(&quot;You are currently in the &quot; + current.name + &quot;.&quot;)
+    print(&quot;Contents of the room:&quot;)
+    if current.contents == []:
+        print(&quot;   None&quot;)
+    else:
+        for item in current.contents:
+            print(&quot;   &quot; + item)
+        
+# Define a function that takes one argument, the name of a room (a string),
+# and returns the corresponding Room object.
+
+def getRoom(name):
+    
+    for i in range(len(floorPlan)):
+        room = floorPlan[i]
+        if name == room.name:
+            return floorPlan[i]
+
+        
+# Define a function that takes as an argument a direction the player
+# wants to move to from the current room. It displays a new location or informs
+# that a player cannot move in a particular direction. Then, it returns
+# a new location (or the same one if a move is impossible).
+
+def move(direction):
+
+    if direction == &quot;north&quot;:
+        if current.north != None:
+            print(&quot;You are now in the &quot; + current.north + &quot;.&quot;)
+            return getRoom(current.north)
+        else:
+            print(&quot;You can&#39;t move in that direction.&quot;)
+            return current
+            
+    if direction == &quot;east&quot;:
+        if current.east != None:
+            print(&quot;You are now in the &quot; + current.east + &quot;.&quot;)
+            return getRoom(current.east)
+        else:
+            print(&quot;You can&#39;t move in that direction.&quot;)
+            return current
+            
+    if direction == &quot;south&quot;:
+        if current.south != None:
+            print(&quot;You are now in the &quot; + current.south + &quot;.&quot;)
+            return getRoom(current.south)
+        else:
+            print(&quot;You can&#39;t move in that direction.&quot;)
+            return current
+            
+    if direction == &quot;west&quot;:
+        if current.west != None:
+            print(&quot;You are now in the &quot; + current.west + &quot;.&quot;)
+            return getRoom(current.west)
+        else:
+            print(&quot;You can&#39;t move in that direction.&quot;)
+            return current
+        
+    if direction == &quot;up&quot;:
+        if current.up != None:
+            print(&quot;You are now in the &quot; + current.up + &quot;.&quot;)
+            return getRoom(current.up)
+        else:
+            print(&quot;You can&#39;t move in that direction.&quot;)
+            return current
+
+    if direction == &quot;down&quot;:
+        if current.down != None:
+            print(&quot;You are now in the &quot; + current.down + &quot;.&quot;)
+            return getRoom(current.down)
+        else:
+            print(&quot;You can&#39;t move in that direction.&quot;)
+            return current
+        
+# Define a function that allows an user to pick up an item from the current
+# room and add it to her/his inventory. 
+
+def pickup(item):
+
+    # case when the item is in the room
+    
+    if item in current.contents:
+        inventory.append(item)
+        current.contents.remove(item)
+        print(&quot;You now have the &quot; + item + &quot;.&quot;)
+
+    # case when the item is not found (possibly it&#39;s not even in the house)
+    else:
+        print(&quot;That item is not in this room.&quot;)
+
+# Define a function that allows an user to drop an item from their inventory
+# into the current room.
+
+def drop(item):
+    
+    if item in inventory:
+        current.contents.append(item)
+        inventory.remove(item)
+        print(&quot;You have dropped the &quot; + item + &quot;.&quot;)
+    else:
+        print(&quot;You don&#39;t have that item.&quot;)
+
+# Define a function that lists all the items an user currently has in the
+# inventory or informs that nothing is stored there.
+
+def listInventory():
+
+    print(&quot;You are currently carrying:&quot;)
+    if inventory == []:
+        print(&quot;   nothing.&quot;)
+    else:
+        for item in inventory:
+            print(&quot;   &quot; + item)
+    
+# Define a function that reads the input file with all the rooms and their 
+# contents&#39; data, creates all the corresponding room objects and stores them 
+# as a list in the floorPlan.
+
+def loadMap():
+
+    global floorPlan
+
+    roomsFile = open(&quot;ProjectData.txt&quot;,&quot;r&quot;)
+    line = roomsFile.readline()
+    floorPlan = []
+
+    while line != &quot;&quot;:
+
+        roomInfo = [eval(x) for x in line.split(&quot;,&quot;)]
+        
+        room = roomInfo[0:7]
+        contents = roomInfo[7:]
+        if contents == []:
+            room.append([])
+        else:
+            room.append(contents)
+            
+        
+        floorPlan.append(createRoom(room))
+        
+        line = roomsFile.readline()
+
+
+    roomsFile.close()
+
+
+# Define a function that displays all the possible commands an user can use
+# to play the game.
+
+def showHelp():
+    
+    print(&quot;\nlook:        display the name of the current room and\
+its contents\nnorth:       move north\neast:        move east\n\
+south:       move south\nwest:        move west\nup:          move up\
+\ndown:        move down\ninventory:   list what items you&#39;re\
+currently carrying\nget &lt;item&gt;:  pick up an item currently in the room\n\
+drop &lt;item&gt;: drop an item you&#39;re currently carrying\nhelp:        print \
+this list\nexit:        quit the game&quot;)
+
+
+def main():
+
+    global current          # make the variable &quot;current&quot; a global variable
+    global inventory        # make the variable &quot;inventory&quot; a global variable
+
+    
+    inventory = []          # initialize inventory
+    
+    loadMap()               # load a map to get the floorPlan
+    
+    current = floorPlan[0]  # set a living room as the starting room
+                            # it could be any other room stored as the
+                            # first one in the input file
+
+    look()                  # display the starting room
+    print()
+
+    # initialize the command-line interpreter
+    # start a loop until an user decides to quit the game
+    # translate each user&#39;s command to an appropriate function
+
+    # meake the game not case-sensitive
+    # make sure the game doesn&#39;t crash when a wrong word is typed in,
+    # instead, inform that a command is not found and allow to type in
+    # another one
+    
+    command = &quot;&quot;
+
+    while command != &quot;exit&quot;:
+
+        command = input(&quot;Enter a command: &quot;)
+
+        command = command.split()
+
+        if len(command) == 1:
+        
+            if command[0].lower() == &quot;look&quot;:
+                look()
+                print()
+            elif command[0].lower()  == &quot;north&quot;:
+                current = move(&quot;north&quot;)
+                print()
+            elif command[0].lower()  == &quot;east&quot;:
+                current = move(&quot;east&quot;)
+                print()
+            elif command[0].lower()  == &quot;south&quot;:
+                current = move(&quot;south&quot;)
+                print()
+            elif command[0].lower()  == &quot;west&quot;:
+                current =  move(&quot;west&quot;)
+                print()
+            elif command[0].lower()  == &quot;up&quot;:
+                current = move(&quot;up&quot;)
+                print()
+            elif command[0].lower()  == &quot;down&quot;:
+                current = move(&quot;down&quot;)
+                print()
+            elif command[0].lower()  == &quot;inventory&quot;:
+                listInventory()
+                print()
+            elif command[0].lower()  == &quot;help&quot;:
+                showHelp()
+                print()
+                
+            # The following command is not listed under &quot;help&quot; for an user and
+            # its purpose is to demonstrate the change in displayRoom() from
+            # project 1. It&#39;s an equivalent of &quot;cheat&quot; in Dr. Bulko&#39;s game.
+
+            elif command[0].lower() == &quot;display&quot;:
+                displayAllRooms()
+                print()
+            elif command[0].lower()  == &quot;exit&quot;:
+                print(&quot;Quitting game.&quot;)
+                break
+            else:
+                print(&quot;The command not found. Try again.\n&quot;)
+
+        elif len(command) == 2:
+            if command[0].lower()  == &quot;get&quot;: 
+                pickup(command[1].lower() )
+                print()
+            elif command[0].lower()  == &quot;drop&quot;:
+                drop(command[1].lower() )
+                print()
+            else:
+                print(&quot;The command not found. Try again.\n&quot;)
+        else:
+            print(&quot;The command not found. Try again.\n&quot;)
+
+main()
+</code></pre>
+
+              <hr>
+              <div class="related-posts">
+                <h5>Related Posts</h5>
+                
+              </div>
+            </div>
+          </div>
+          <hr>
+        <div class="disqus">
+  <div id="disqus_thread"></div>
+  <script type="text/javascript">
+
+    (function() {
+      
+      
+      if (window.location.hostname == "localhost")
+        return;
+
+      var disqus_shortname = '';
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  <a href="http://disqus.com/" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div>
+        </div>
+      </div>
+      
+    </div>
+
+    
+    <footer>
+  <div id="footer">
+    <div class="container">
+      <p class="text-muted">&copy; All rights reserved. Powered by <a href="https://gohugo.io/">Hugo</a> and
+      <a href="http://www.github.com/nurlansu/hugo-sustain/">sustain</a> with ♥</p>
+    </div>
+  </div>
+</footer>
+<div class="footer"></div>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="/js/docs.min.js"></script>
+<script src="/js/main.js"></script>
+
+<script src="/js/ie10-viewport-bug-workaround.js"></script>
+
+
+    
+  </body>
+</html>

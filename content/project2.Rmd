@@ -1,0 +1,520 @@
+---
+title: "Prediction of legal and illegal drugs intake based on personality traits."
+author: "Maria Dolak mkd2287"
+date: "2020-04-25"
+output: pdf_document
+---
+**For my analysis, I used a personality traits and drug intake dataset. It was collected between March 2011 and March 2012 by Elaine Fehrman through an online questionnaire, it contains records of 1885 respondents. Each response includes personality trait scores measured by NEO-FFI-R (neuroticism, extraversion, openness to experience, agreeableness, and conscientiousness) - known as the Big Five and denoted as O C E A N variables; impulsivity score measured by BIS-11; sensation seeking score measured by ImpSS; level of education; age; gender; country of residence; ethnicity. In addition, participants were questioned concerning their use of 18 legal and illegal drugs - alcohol, amphetamines, amyl nitrite, benzodiazepine, cannabis, chocolate, cocaine, caffeine, crack, ecstasy, heroin, ketamine, legal highs, LSD, methadone, mushrooms, nicotine and volatile substance abuse and one fictitious drug (Semeron) which was introduced to identify over-claimers. The response categories were as follows: never used the drug, used it over a decade ago, or in the last decade, year, month, week, or day. Only a relevant subset of the data was used for each of the Project 2 questions.**
+
+**The data was donated by authors. In depth data analysis was published in an extended report - Fehrman E., Muhammad A.K., Mirkes E.M., Egan V., Gorban A.N. (2017) The Five Factor Model of Personality and Evaluation of Drug Consumption Risk. In: Palumbo F., Montanari A., Vichi M. (eds) Data Science. Studies in Classification, Data Analysis, and Knowledge Organization. Springer, Cham.**
+
+*Function to calculate Accuracy, Sensitivity (TPR), Specificity (TNR), Recall (PPV) and Area under the curve (AUC).*
+```{r setup, include=FALSE}
+#LEAVE THIS CHUNK ALONE!
+library(knitr)
+opts_chunk$set(fig.align="center", fig.height=5, message=FALSE, warning=FALSE, fig.width=8, tidy.opts=list(width.cutoff=60),tidy=TRUE)
+
+class_diag<-function(probs,truth){
+  
+  tab<-table(factor(probs>.5,levels=c("FALSE","TRUE")),truth)
+  acc=sum(diag(tab))/sum(tab)
+  sens=tab[2,2]/colSums(tab)[2]
+  spec=tab[1,1]/colSums(tab)[1]
+  ppv=tab[2,2]/rowSums(tab)[2]
+
+  if(is.numeric(truth)==FALSE & is.logical(truth)==FALSE) truth<-as.numeric(truth)-1
+  
+  #CALCULATE EXACT AUC
+  ord<-order(probs, decreasing=TRUE)
+  probs <- probs[ord]; truth <- truth[ord]
+  
+  TPR=cumsum(truth)/max(1,sum(truth)) 
+  FPR=cumsum(!truth)/max(1,sum(!truth))
+  
+  dup<-c(probs[-1]>=probs[-length(probs)], FALSE)
+  TPR<-c(0,TPR[!dup],1); FPR<-c(0,FPR[!dup],1)
+  
+  n <- length(TPR)
+  auc<- sum( ((TPR[-1]+TPR[-n])/2) * (FPR[-1]-FPR[-n]) )
+
+  data.frame(acc,sens,spec,ppv,auc)
+}
+```
+
+# Read in the data
+```{r}
+library(readr)
+drugs <- read_csv("drug_consumption_data.csv")
+library(dplyr)
+library(tidyverse)
+library(lmtest)
+```
+
+
+*Cleaning up the data: Recoding the values given in the dataset according to the legend given https://data.world/uci/drug-consumption-quantified Recategorizing education into three groups. Centering Big Five personality test scores around the mean. Dummy coding - reclassifying categories of drug intake.*
+```{r}
+drugs <- drugs %>% mutate(gender = case_when(gender == 0.48246 ~ "Female" ,
+gender == (-0.48246) ~"Male"))
+
+drugs <- drugs %>% mutate(education = case_when(education == -2.43591  ~ "Left_before_16" ,
+education == -1.73790  ~ "Left_16",education == -1.43719  ~ "Left_17",
+education == -1.22751  ~ "Left_18",education == -0.61113  ~ "Uni_no_degree",
+education == -0.05921  ~ "Diploma",education == 0.45468   ~ "Undergraduate",
+education == 1.16365  ~ "Masters",education == 1.98437  ~ "PhD"))
+
+drugs <- drugs %>% mutate(country = case_when(country == -0.09765  ~ "Australia", 
+country == 0.24923  ~ "Canada", country == -0.46841  ~ "New Zealand",
+country == -0.28519  ~ "Other",country == 0.21128  ~ "Ireland",
+country == 0.96082  ~ "UK",country == -0.57009   ~ "USA"))
+
+drugs <- drugs %>% mutate(ethnicity = case_when(ethnicity == -0.50212  ~ "Asian",
+ethnicity == -1.10702   ~ "Black", ethnicity == 1.90725  ~ "Black/Asian", 
+ethnicity == 0.12600  ~ "White/Asian", ethnicity == -0.22166  ~ "White/Black", 
+ethnicity == 0.11440  ~ "Other", ethnicity == -0.31685  ~ "White"))
+
+drugs <- drugs %>% mutate(age = case_when(age == -0.95197  ~ "18-24", 
+age == -0.07854   ~ "25-34", age == 0.49788  ~ "35-44", age == 1.09449  ~ "45-54",
+age == 1.82213  ~ "55-64", age == 2.59171  ~ "65+"))
+
+# New education categories:
+# High: PhD, Masters, Undergraduate
+# Middle: Diploma/Certificate, University with no degree
+# Low: All groups that left school before or at age 18
+
+drugs <- drugs %>% mutate(edu = case_when(education == "Undergraduate"  ~ "High",
+education == "Diploma"  ~ "Middle", education == "PhD"  ~ "High", 
+education == "Masters"  ~ "High", education == "Left_before_16"  ~ "Low",
+education == "Left_16"  ~ "Low", education == "Left_17"  ~ "Low", 
+education == "Left_18"  ~ "Low", education == "Uni_no_degree"  ~ "Middle"))
+
+# Center Big Five personality traits around mean
+
+drugs$oo <- drugs$o - mean(drugs$o)
+drugs$cc <- drugs$c - mean(drugs$c)
+drugs$ee <- drugs$e - mean(drugs$e)
+drugs$aa <- drugs$a - mean(drugs$a)
+drugs$nn <- drugs$n - mean(drugs$n)
+
+# More frequently used drugs
+# Regular users vs sporadic/non-users
+# Sporadic/non-users (0): Group that has never tried or tried a decade ago.
+# Regular users (1) tried within last year/month/week/day. 
+# NOTE: the answers do not actually indicate a frequency of 
+# usage but when was the last time someone took a particular drug, 
+# e.g. the group of people who drunk alocohol within last day does not indicate a frequent use of the drug.
+
+drugs <- drugs%>%mutate(Nicotine=ifelse(Nicotine=="CL5" | Nicotine=="CL6",1,0))%>%
+mutate(Alcohol=ifelse(Alcohol=="CL5" | Alcohol=="CL6",1,0)) %>% 
+mutate(Caffeine=ifelse(Caffeine=="CL5" | Caffeine=="CL6",1,0)) %>%
+mutate(Cannabis=ifelse(Cannabis=="CL5" | Cannabis=="CL6",1,0)) %>% 
+mutate(Chocolate=ifelse(Chocolate=="CL5" | Chocolate=="CL6",1,0))
+
+# Less frequently used drugs
+# Tried at least once (0) vs never tried (1)
+drugs <- drugs%>%mutate(Cocaine=ifelse(Cocaine=="CL0",0,1)) %>% mutate(Amphet=ifelse(Amphet=="CL0",0,1))%>%
+mutate(Amyl=ifelse(Amyl=="CL0",0,1))%>%
+mutate(Benzos=ifelse(Benzos=="CL0",0,1))%>%
+mutate(Crack=ifelse(Crack=="CL0",0,1))%>%
+mutate(Ectasy=ifelse(Ectasy=="CL0",0,1))%>%
+mutate(Heroin=ifelse(Heroin=="CL0",0,1))%>%
+mutate(Ketamine=ifelse(Ketamine=="CL0",0,1))%>%
+mutate(LehalH=ifelse(LehalH=="CL0",0,1))%>%
+mutate(LSD=ifelse(LSD=="CL0",0,1))%>%
+mutate(Meth=ifelse(Meth=="CL0",0,1))%>%
+mutate(Mushrooms=ifelse(Mushrooms=="CL0",0,1))
+
+
+head(drugs)
+```
+
+
+**Manova for differences in big five traits between different education levels.** 
+
+*All 5 traits showed a significant differences between different education levels. After Bonferroni correction: Openess - people with higher or middle education show significantly higher openess than people with low education, no difference between high and middle. Conscientiousness - people with higher education show significantly higher score than people with either middle or low education, no difference between middle and low. Extraversion - people with higher education show higher score than people with middle or low education, no difference between middle and low. Agreeableness - people with higher education show higher score than people with middle education, no other significant differences. Neuroticism - people with middle education show significantly higher score than people with higher education, no other differences.*
+
+*IMPORTANT: The differences do not explain the causality, whether personality traits predict how far people reach with their education vs. education helps to develop certain personality traits. Note also that significant doesn't mean huge, the differences are usually of about just one score as can be seen in the table with means for each group. In addition, manova assumptions were likely violated, e.g. Shapiro-Wilk test rejected multivariate normality, ggboxplot shows a big variance within each personality traits group and possibly violation of homogeneity of within-group covariance.*
+
+```{r}
+# Q1
+
+m<-manova(cbind(o,c,e,a,n) ~ edu, data = drugs)
+summary(m)
+summary.aov(m) 
+
+pairwise.t.test(drugs$o,drugs$edu, p.adj="none")
+pairwise.t.test(drugs$c,drugs$edu, p.adj="none")
+pairwise.t.test(drugs$e,drugs$edu, p.adj="none")
+pairwise.t.test(drugs$a,drugs$edu, p.adj="none")
+pairwise.t.test(drugs$n,drugs$edu, p.adj="none")
+
+drugs %>% group_by(edu) %>% select(o,c,e,a,n) %>% summarize_all(mean)
+
+# Number of tests: 21
+1 + 5 + 5*3
+
+# Probability of at least type I error: 65.9%
+1-0.95^21
+
+# Bonferroni correction 0.0024
+0.05/21
+
+library(ggpubr)
+library(rstatix)
+
+
+ggboxplot(drugs, x = "edu", y = c("o","c","e","a","n"), merge = TRUE, palette = "jco")
+drugs %>% select(o,c,e,a,n) %>% mshapiro_test()
+```
+
+**Randomization >>> PERMANOVA**
+
+*To avoid a violation of assumptions, PERMANOVA on the same data was performed. The null hypothesis is that there is no difference in personality traits between different education levels. The alternative hypothesis is that there are differences in personality traits depending on the level of education: high, middle or low. The null hypothesis can be rejected as indicated by the low p value and the F value (18.874) being that is . As can be seen on the graph with F value distribution, there is a significant difference in personality traits between different education levels.*
+```{r}
+# Q2
+
+library(vegan)
+distances <- drugs %>% select(o,c,e,a,n) %>% dist()
+ado <- adonis(distances~edu,data = drugs)
+ado
+qplot(ado$f.perms) + labs(y = "Count", x = "F value")
+```
+
+**A linear regression model predicting sensation seeking from the Big Five personality traits.**
+
+*When other personality traits are kept at 0, increase by one unit in Openess, Extraversion and Neuroticism causes increase in Sensation Seeking by 0.05, 0.03 and 0.001 respectively (when calculated using z-scores rather than actual scores centered around mean, the values were 0.36, 0.22 and 0.07 respectively). Increase in Conscientiousness and Agreeableness causes decrease in Sensation Seeking by 0.03 in both (0.21 and 0.20 respectively using z-scores). The interaction indicates that for every increase by one in Openess, the slope of linear relationship between Sensation Seeking and Agreeableness increases by 0.001 (0.05 using z-score) and for every increase in Openess, the slope for linear relationship between SS and Neuroticism increases by 0.0009 (no increase using z-score).*
+
+```{r}
+# Q3a
+fit<-lm(ss ~ (oo + cc + ee + aa + nn)^2 , data=drugs)
+summary(fit)
+
+# I tried to visualize relationship between oo and aa on ss but the graphs 
+# showed an almost parallel to x-axis line showing that the interaction is almost none. 
+# I was not sure if my graphs were correct so I skipped them.
+```
+
+**Predicting sensation seeking from impulsivity and gender**
+
+*Being a female decreases sensation seeking by 0.14, while being a male increases sensation seeking by 0.28. For every increase in impulsivity by one unit, there is an increase in sensation seeking by 0.64. However, an increase in impulsivity by one unit if you are a male causes a decrease in sensation seeking by 0.09 (less statistically significant than the other results). A steeper red line on the graph suggests that impulsivity score explains the sensation seeking score to a greater extent for females than for males. The "grid structure" of the data points is due to a limited range of scores for both ss and impulsivity. Both scores are z-scores.*
+
+```{r}
+# Q3b
+
+fit2<-lm(ss ~ impulsive * gender, data=drugs)
+summary(fit2) 
+
+drugs %>% ggplot(aes(impulsive, ss, color = gender)) + geom_point() +
+  geom_smooth(method = "lm")
+
+
+# My question: would the impulsive:genderMale interaction suggest 
+# that impulsivity may explain the positive effect of male on sensation
+# seeking score meaning the gender itself is not such a strong predictor?
+```
+
+**Checking assumptions**
+
+*Non-significant p-value for bptest confirms that homoskedasticity is maintained. The graphs show that linearity and normality are maintained. However, the Kolmogorov-Smirnov and Shapiro-Wilk tests of normality reject the null hypothesis hence rejecting the normality assumption. This, potentially, could be due to a large data sample as these tests are better in checking assumptions for smaller datasets.*
+
+```{r}
+# Q3c
+
+resids<-fit2$residuals 
+fitvals<-fit2$fitted.values
+
+
+# normality
+ggplot()+geom_histogram(aes(resids),bins=20)
+ggplot()+geom_qq(aes(sample=resids))+geom_qq_line(aes(sample=resids), color='red')
+
+ks.test(resids, "pnorm", sd=sd(resids))
+shapiro.test(resids)
+
+# linearity and homoskedasticity
+library(sandwich)
+ggplot()+geom_point(aes(fitvals,resids))+geom_hline(yintercept=0, col="red")
+bptest(fit2)
+
+
+```
+
+*Both, standard errors (SE) and robust SE are very similar for this model with differences of the 0.001 order. This is in line with the results of bptest showing that homoskedasticity is maintained, so the hypothetically more conservative standard error is almost the same.*
+```{r}
+# Q3d
+summary(fit2)$coef
+
+coeftest(fit2, vcov = vcovHC(fit2))
+```
+
+```{r}
+# This model explains 41% of the variation in the model of sensation seeking
+# from impulsivity and gender.
+
+summary(fit2)$r.sq
+```
+
+*Bootstrapped standard errors calculated from 5000 data samples with replacement, again, show very similar values differing by the order of 0.001 from normal SE and robust SE. This show that a model performs similarly in even more conservative SE models. This is because the model assumptions were met and the sample is large.*
+```{r}
+# repeat 5000 times
+samp_distn<-replicate(5000, {
+  boot_dat <- sample_frac(drugs, replace=T) #bootstrap your data
+  fit <- lm(ss ~ impulsive * gender, data=boot_dat) #fit model
+  coef(fit) #save coefs
+})
+## Estimated SEs
+samp_distn %>% t %>% as.data.frame %>% summarize_all(sd)
+```
+
+**FINALLY! Predicting drug-intake-related behavior from the Big Five personality traits, impulsivity and sensation seeking.**
+
+*Based on the paper published with this dataset, there are three clusters of drugs that are centered around heroin (crack, cocaine, methadone), ectasy (amphetamines, cannabis, cocaine, ketamine, LSD, magic mushrooms, legal highs) or benzodiazepines (methadone, amphetamines, cocaine). Roughly speaking, this means, someone who tried one drug from a given class, was likely to try others. However, the interactions between and within these classes are much more complex, e.g. knowing the consumption patterns of LSD, Magic Mushrooms and Cocaine can predict Ketamine intake but not the other way round. For simplicity, I used the three clusters without further interactions. Therefore, I created variable that grouped respondents who tried at least one of the drug from each group (the groups where respondent tried all of the drugs from the given class were small, ~7% of the total sample, and the sensitivity of the model was 0, so it was excluded from the analysis.)*
+
+*The rest of the analysis presents logistic regression models predicting intake of at least one drug from a given drug class, using the Big Five personality traits, impulsivity and sensation seeking as predicting variables. The models' out-of sample predictions using 10-Fold cross-validation are performed as well as the lasso method for choosing the most relevant variables and rerunning the 10-fold cross-validation on these variables. The procedure is repreated for all three classes of drugs - heroin, ectasy, benzodiazepines. The logarithmic coefficients are explained but exponentiated coefficients are also given.*
+```{r}
+drugs <- drugs %>% mutate(heroin_class = ifelse(Heroin == 1 |
+Crack == 1 | Cocaine == 1 | Meth == 1,1,0))
+
+drugs <- drugs %>% mutate(ectasy_class = ifelse(Ectasy == 1 |
+Amphet == 1 | Cannabis == 1 | Cocaine == 1 | Ketamine == 1 | LSD == 1 |
+Mushrooms == 1 | LehalH == 1,1,0))
+
+drugs <- drugs %>% mutate(benzo_class = ifelse(Benzos == 1 |
+Meth == 1 | Amphet == 1 | Cocaine == 1,1,0))
+
+
+# drugs <- drugs %>% mutate(heroin_group_and = ifelse(Heroin == 1 &
+# Crack == 1 & Cocaine == 1 & Meth == 1,1,0))
+# sum(drugs$heroin_group_and==1)
+# The result = 131
+# 131/1884 (total sample) = 0.070 = 7%
+# When the model in the chunk below was run using this variable
+# (or equivalent ones for the two remaining groups of drugs), 
+# the sensitivity was 0 and specificity 1, suggesting that the model was bad.
+
+```
+
+
+**Heroin Class**
+
+*When other model's factors are kept at 0, increase by one unit in Openess, Neuroticism, impulsive score or ss  increases the likelihood of the drug intake by 0.06, 0.006, 0.08 and 0.44 respectively. Increase in Conscientiousness, Extraversion and Agreeableness causes decrease in the drug intake chances by 0.04, 0.03 and 0.04 respectively. The accuracy, true positive rate and true negative rate are reasonable, the auc=0.732 indicates fair level of prediction.*
+```{r}
+fit <- glm(heroin_class~oo+cc+ee+aa+nn+impulsive+ss, data=drugs,
+family="binomial"(link="logit"))
+coeftest(fit)
+
+exp(coef(fit))
+
+prob <- predict(fit, type="response") 
+
+table(predict=as.numeric(prob>.5),truth=drugs$heroin_class)%>%addmargins
+
+class_diag(prob,drugs$heroin_class)
+
+drugs$logit<-predict(fit) #get predicted log-odds
+drugs$fill <-factor(drugs$heroin_class)
+ggplot(drugs,aes(logit, fill=fill))+geom_density(alpha=.3)+
+  geom_vline(xintercept=0,lty=2)
+
+library(plotROC)
+drugs$prob1<-predict(fit,type="response") 
+ROCplot<-ggplot(drugs)+geom_roc(aes(d=heroin_class,m=prob1), n.cuts=0)
+ROCplot
+#The AUC value agrees with the confusion matrix data from class_diag function.
+calc_auc(ROCplot)
+```
+
+*The 10-fold CV caused a slight drop in AUC to 0.705 but the model still has a fair level of predictivity in the out-of-sample data.*
+```{r}
+# Q5 10-Fold Cross-Validation
+
+k=10
+sample_data <-drugs[sample(nrow(drugs)),] 
+folds<-cut(seq(1:nrow(drugs)),breaks=k,labels=F)
+diags<-NULL
+for(i in 1:k){ # FOR EACH OF 10 FOLDS 
+train<-sample_data[folds!=i,] # CREATE TRAINING SET 
+test<-sample_data[folds==i,] # CREATE TESTING SET
+truth<-test$heroin_class
+fit<- glm(heroin_class~oo+cc+ee+aa+nn+impulsive+ss, data=train, family="binomial")
+probs<- predict(fit, newdata=test, type="response") 
+diags<-rbind(diags,class_diag(probs,truth)) #CV DIAGNOSTICS FOR EACH FOLD
+} 
+
+summarize_all(diags,mean)
+```
+
+*All factors are relevant so no 10-Fold CV needed. This is consistent with the fact that the Big Five personality traits are independent from each other, hence it's harder for a logistic regression model to reduce these five variables.*
+```{r}
+# Q6 LASSO
+
+library(glmnet)
+
+y<-as.matrix(drugs$heroin_class) #grab response 
+x<-model.matrix(heroin_class~oo+cc+ee+aa+nn+impulsive+ss, data=drugs)[,-1] #grab predictors
+cv<-cv.glmnet(x,y,family="binomial") 
+lasso<-glmnet(x,y,family="binomial",lambda=cv$lambda.1se) 
+coef(lasso)
+```
+
+
+**Ectasy Class**
+
+*When other model's factors are kept at 0, increase by one unit in Openess, impulsive score or ss increases the likelihood of the drug intake by 0.11, 0.06, and 0.93 respectively. Increase in Conscientiousness, Extraversion,  Agreeableness and Neuroticism causes decrease in the chance of drug intake by 0.07, 0.06, 0.03 and 0.02 respectively. The true positive rate 0.90 is very good, however, the specificity level is quite low 0.54, meaning quite a huge fraction of people can be predicted to try a drug, while they did not. The auc=0.840 indicates an overall good level of prediction.*
+```{r}
+fit <- glm(ectasy_class~oo+cc+ee+aa+nn+impulsive+ss, data=drugs,
+family="binomial"(link="logit"))
+coeftest(fit)
+exp(coef(fit))
+prob <- predict(fit, type="response") 
+table(predict=as.numeric(prob>.5),truth=drugs$ectasy_class)%>%addmargins
+class_diag(prob,drugs$ectasy_class)
+
+drugs$logit<-predict(fit) #get predicted log-odds
+drugs$fill <-factor(drugs$ectasy_class)
+ggplot(drugs,aes(logit, fill=fill))+geom_density(alpha=.3)+
+  geom_vline(xintercept=0,lty=2)
+
+library(plotROC)
+drugs$prob1<-predict(fit,type="response") 
+ROCplot<-ggplot(drugs)+geom_roc(aes(d=ectasy_class,m=prob1), n.cuts=0)
+ROCplot
+calc_auc(ROCplot)
+```
+
+*The 10-fold cross-validation slightly decreased sensitivity value but also slightly increased specificity value. The AUC value decreased by ~ 0.005 but remained on a good prediction level of ~0.835.*
+
+```{r}
+# Q5 10-Fold Cross-Validation
+
+k=10
+sample_data <-drugs[sample(nrow(drugs)),] 
+folds<-cut(seq(1:nrow(drugs)),breaks=k,labels=F)
+diags<-NULL
+for(i in 1:k){ # FOR EACH OF 10 FOLDS 
+train<-sample_data[folds!=i,] # CREATE TRAINING SET 
+test<-sample_data[folds==i,] # CREATE TESTING SET
+truth<-test$ectasy_class
+fit<- glm(ectasy_class~oo+cc+ee+aa+nn+impulsive+ss, data=train, family="binomial")
+probs<- predict(fit, newdata=test, type="response") 
+diags<-rbind(diags,class_diag(probs,truth)) #CV DIAGNOSTICS FOR EACH FOLD
+} 
+
+summarize_all(diags,mean)
+```
+
+*The lasso model indicated that neuroticism and impulsive score are redundant in the prediction of the ectasy class.*
+
+```{r}
+# Q6 LASSO
+
+library(glmnet)
+
+y<-as.matrix(drugs$ectasy_class) #grab response 
+x<-model.matrix(ectasy_class~oo+cc+ee+aa+nn+impulsive+ss, data=drugs)[,-1] #grab predictors
+cv<-cv.glmnet(x,y,family="binomial") 
+lasso<-glmnet(x,y,family="binomial",lambda=cv$lambda.1se) 
+coef(lasso)
+```
+
+*Even though the two redundant factors were eliminated - nn and impulsiveness - the AUC value remained almost exactly the same (differences of 0.0001 order) indicating that the initial model was not overfitting and also that it is good for both in-sample and out-of-sample data.*
+
+```{r}
+# Q6 LASSO 10-Fold CV
+k=10
+sample_data <-drugs[sample(nrow(drugs)),] 
+folds<-cut(seq(1:nrow(drugs)),breaks=k,labels=F)
+diags<-NULL
+for(i in 1:k){ # FOR EACH OF 10 FOLDS 
+train<-sample_data[folds!=i,] # CREATE TRAINING SET 
+test<-sample_data[folds==i,] # CREATE TESTING SET
+truth<-test$ectasy_class
+fit<- glm(ectasy_class~oo+cc+aa+ee+ss, data=train, family="binomial")
+probs<- predict(fit, newdata=test, type="response") 
+diags<-rbind(diags,class_diag(probs,truth)) #CV DIAGNOSTICS FOR EACH FOLD
+} 
+
+summarize_all(diags,mean)
+```
+
+
+**Benzodiazepines Class**
+
+*When other model's factors are kept at 0, increase by one unit in Openess, Neuroticism, impulsive score or ss increases the likelihood of the drug intake by 0.07, 0.02, 0.04 and 0.41 respectively. Increase in Conscientiousness, Extraversion and Agreeableness causes decrease in the chance of drug intake by 0.04, 0.03 and 0.03 respectively. Very good sensitivity, low specificity and fair level of prediction with the AUC value 0.741 were found.*
+
+```{r}
+fit <- glm(benzo_class~oo+cc+ee+aa+nn+impulsive+ss, data=drugs, 
+family="binomial"(link="logit"))
+coeftest(fit)
+exp(coef(fit))
+prob <- predict(fit, type="response") 
+table(predict=as.numeric(prob>.5),truth=drugs$benzo_class)%>%addmargins
+class_diag(prob,drugs$benzo_class)
+
+drugs$logit<-predict(fit) #get predicted log-odds
+drugs$fill <-factor(drugs$benzo_class)
+ggplot(drugs,aes(logit, fill=fill))+geom_density(alpha=.3)+
+  geom_vline(xintercept=0,lty=2)
+
+library(plotROC)
+drugs$prob1<-predict(fit,type="response") 
+ROCplot<-ggplot(drugs)+geom_roc(aes(d=benzo_class,m=prob1), n.cuts=0)
+ROCplot
+calc_auc(ROCplot)
+```
+
+*A slightly lower AUC value is still within a fair level of prediction suggesting that the original model was not overfitting the values and can be used for the out-of-sample data.*
+
+```{r}
+# Q5 10-Fold Cross-Validation
+
+k=10
+sample_data <-drugs[sample(nrow(drugs)),] 
+folds<-cut(seq(1:nrow(drugs)),breaks=k,labels=F)
+diags<-NULL
+for(i in 1:k){ # FOR EACH OF 10 FOLDS 
+train<-sample_data[folds!=i,] # CREATE TRAINING SET 
+test<-sample_data[folds==i,] # CREATE TESTING SET
+truth<-test$benzo_class
+fit<- glm(benzo_class~oo+cc+ee+aa+nn+impulsive+ss, data=train, family="binomial")
+probs<- predict(fit, newdata=test, type="response") 
+diags<-rbind(diags,class_diag(probs,truth)) #CV DIAGNOSTICS FOR EACH FOLD
+} 
+
+summarize_all(diags,mean)
+```
+
+*Lasso model suggests that Extraversion and impulsiveness are redundant.*
+
+```{r}
+# Q6 LASSO
+
+library(glmnet)
+
+y<-as.matrix(drugs$benzo_class) #grab response 
+x<-model.matrix(benzo_class~oo+cc+ee+aa+nn+impulsive+ss, data=drugs)[,-1] #grab predictors
+cv<-cv.glmnet(x,y,family="binomial") 
+lasso<-glmnet(x,y,family="binomial",lambda=cv$lambda.1se) 
+coef(lasso)
+```
+
+*Again, lasso model shows similar AUC value as the original model. Both models, either with or without Extraversion and impulsive score are fair predictors of the drug intake from the benzodiazepines class. Since the prediction is the same, it makes sense to exclude the two factors picked up by lasso.*
+
+```{r}
+# Q6 LASSO 10-Fold CV
+k=10
+sample_data <-drugs[sample(nrow(drugs)),] 
+folds<-cut(seq(1:nrow(drugs)),breaks=k,labels=F)
+diags<-NULL
+for(i in 1:k){ # FOR EACH OF 10 FOLDS 
+train<-sample_data[folds!=i,] # CREATE TRAINING SET 
+test<-sample_data[folds==i,] # CREATE TESTING SET
+truth<-test$benzo_class
+fit<- glm(benzo_class~oo+cc+aa+nn+ss, data=train, family="binomial")
+probs<- predict(fit, newdata=test, type="response") 
+diags<-rbind(diags,class_diag(probs,truth)) #CV DIAGNOSTICS FOR EACH FOLD
+} 
+
+summarize_all(diags,mean)
+```
+
+*Overall, all logistic regression models presented are good in not overfitting the data and can be used in out-of-sample data. However, the only model with good level of prediction is the one predicting drug intake from the ectasy class. In all models Openess, impulsivity and sensation seeking was positively correlated with the drug consumption. In all models Conscientiousness, Extraversion and Agreeableness were negatively decreasing a chance of prediction of the drug intake. Higher Neuroticism increased prediction of intake of a drug from the heroin and benzodiazepine class but decreased from the ectasy class. Nevertheless, it's important to note that the predictibility of these models does not explain the causality e.g. whether personality traits explain the drug consumption pattern or maybe specific class of drugs influences personality traits. Moreover, the grouping of the drugs used in this project is very simplistic and much more complex analysis is needed to reach any real-life conclusions.*
